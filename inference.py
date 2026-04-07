@@ -10,8 +10,8 @@ Usage:
     export HF_TOKEN=hf_xxx
     python inference.py
 
-Runs all 3 tasks sequentially and prints [START]/[STEP]/[END] logs.
-Final overall score = average of 3 task scores.
+Runs all 4 tasks sequentially and prints [START]/[STEP]/[END] logs.
+Final overall score = average of 4 task scores.
 """
 
 import json
@@ -28,12 +28,16 @@ from environment import SupportTriageEnvironment
 from models import SupportAction
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-HF_TOKEN: Optional[str] = os.getenv("HF_TOKEN")
-if HF_TOKEN is None:
-    raise ValueError("HF_TOKEN environment variable is required")
-API_KEY: str = HF_TOKEN
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME: str = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+HF_TOKEN: Optional[str] = os.getenv("HF_TOKEN")
+
+# Optional — only needed if using from_docker_image():
+LOCAL_IMAGE_NAME: Optional[str] = os.getenv("LOCAL_IMAGE_NAME")
+
+API_KEY: str = HF_TOKEN or ""
+if not API_KEY:
+    raise ValueError("HF_TOKEN environment variable is required")
 BENCHMARK: str = "support_triage_env"
 SEED: int = 42
 TEMPERATURE: float = 0.1
@@ -68,7 +72,7 @@ def log_end(
 ) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} score={score:.2f} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
         flush=True,
     )
 
