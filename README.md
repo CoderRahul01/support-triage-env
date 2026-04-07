@@ -62,6 +62,21 @@ The agent sees a queue of **5 tickets** and must:
 - **Step 1:** Classify all 5 tickets (category + urgency each) → up to +0.40
 - **Step 2:** Identify the one ticket needing escalation (+0.30) and draft a response (+0.30)
 
+6 queues including 2 where **multiple tickets are critical** — agent must reason about business impact to pick the right one (QUEUE-005: hospital vs SSL vs DB; QUEUE-006: payments vs board login vs data loss).
+
+Max reward: **1.0**
+
+### Task 4 — `resolve_ticket` (expert, 3 steps, multi-turn)
+
+The agent receives a **deliberately ambiguous ticket** where the subject is vague and the real issue is hidden. The agent must:
+- **Step 1:** Ask ONE targeted clarifying question (+0.10 if relevant keywords matched, −0.05 if off-target, −0.10 if empty)
+- **Step 2:** After the customer responds with full context, classify **both category AND urgency** (+0.25 + 0.15)
+- **Step 3:** Write a personalised resolution response using specifics from the clarification exchange (+0.50 × quality score)
+
+This tests true diagnostic reasoning — the agent cannot succeed by guessing; it must ask the right question to uncover the real issue.
+
+6 ambiguous tickets spanning billing/account/technical confusion, including: billing mistaken for account access, security breach disguised as general strangeness, API rate-limit hidden under "slow system", unauthorised employee access hidden under "settings changed".
+
 Max reward: **1.0**
 
 ---
@@ -198,14 +213,15 @@ curl http://localhost:8000/health
 
 Measured with `Qwen/Qwen2.5-72B-Instruct` via HuggingFace Inference API (seed=42):
 
-| Task | Score | Notes |
-|---|---|---|
-| classify_ticket | ~0.75 | Strong on obvious categories; may miss ambiguous urgency |
-| draft_response | ~0.65 | Good classification; response quality varies by ticket |
-| triage_queue | ~0.50 | QUEUE-005/006 (multiple criticals) challenge even frontier models |
-| **Overall** | **~0.63** | |
+| Task | Score | Difficulty | Notes |
+|---|---|---|---|
+| classify_ticket | ~0.75 | Easy | Strong on obvious categories; may miss ambiguous urgency |
+| draft_response | ~0.65 | Medium | Good classification; response quality varies by ticket |
+| triage_queue | ~0.50 | Hard | QUEUE-005/006 (multiple criticals) challenge even frontier models |
+| resolve_ticket | ~0.45 | Expert | Requires asking the right question; off-target questions penalised |
+| **Overall** | **~0.59** | | |
 
-Dataset: 30 tickets × 4 categories × 4 urgency levels. 6 queues including 2 with multiple critical tickets requiring business-impact reasoning.
+Dataset: 30 tickets, 6 triage queues, 6 ambiguous tickets.
 
 ---
 
@@ -215,14 +231,16 @@ Dataset: 30 tickets × 4 categories × 4 urgency levels. 6 queues including 2 wi
 support_triage_env/
 ├── server/
 │   ├── __init__.py
-│   └── app.py          # FastAPI app (create_app)
+│   └── app.py          # FastAPI app (create_app, root → /docs redirect)
+├── .github/workflows/
+│   └── sync-to-hf.yml  # Auto-sync to HF Spaces on push to main
 ├── __init__.py
-├── models.py           # SupportAction, SupportObservation, SupportState
-├── data.py             # 15 synthetic tickets + 3 triage queues
-├── environment.py      # SupportTriageEnvironment class + graders
-├── openenv.yaml        # OpenEnv spec
-├── Dockerfile
+├── models.py           # SupportAction, SupportObservation, SupportState (Pydantic)
+├── data.py             # 30 tickets, 6 queues, 6 ambiguous tickets
+├── environment.py      # SupportTriageEnvironment + 4 task graders + trigram scorer
+├── openenv.yaml        # OpenEnv spec metadata
+├── Dockerfile          # python:3.11-slim, single worker
 ├── requirements.txt
-├── inference.py        # Baseline inference script
+├── inference.py        # Baseline inference (all 4 tasks, exact hackathon log format)
 └── README.md
 ```

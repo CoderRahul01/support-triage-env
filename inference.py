@@ -40,8 +40,8 @@ TEMPERATURE: float = 0.1
 MAX_TOKENS: int = 1024
 SUCCESS_THRESHOLD: float = 0.40
 
-TASKS: List[str] = ["classify_ticket", "draft_response", "triage_queue"]
-MAX_STEPS: dict = {"classify_ticket": 2, "draft_response": 3, "triage_queue": 2}
+TASKS: List[str] = ["classify_ticket", "draft_response", "triage_queue", "resolve_ticket"]
+MAX_STEPS: dict = {"classify_ticket": 2, "draft_response": 3, "triage_queue": 2, "resolve_ticket": 3}
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -159,8 +159,11 @@ def format_observation(obs) -> str:
                 f"Message: {content_preview}"
             )
 
+    if obs.revealed_info:
+        parts.append(f"=== {obs.revealed_info} ===")
+
     if obs.last_action_result:
-        parts.append(f"\nPrevious step feedback: {obs.last_action_result}")
+        parts.append(f"Previous step feedback: {obs.last_action_result}")
 
     return "\n\n".join(parts)
 

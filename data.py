@@ -3,6 +3,7 @@ Synthetic support ticket data with deterministic ground-truth labels.
 30 tickets covering real-world scenarios across 4 categories,
 including ambiguous cases that challenge frontier models.
 6 pre-built queues used for the triage_queue task.
+6 ambiguous tickets used for the resolve_ticket multi-turn task.
 """
 from typing import Any, Dict, List
 
@@ -641,6 +642,209 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
                 {"ticket_id": "TKT-026", "classification": "technical", "urgency": "high"},
                 {"ticket_id": "TKT-018", "classification": "general",   "urgency": "medium"},
             ],
+        },
+    },
+]
+
+
+# ── Ambiguous tickets for the resolve_ticket multi-turn task ──────────────────
+# Each ticket has partial_content (shown initially) and full_content + customer_reply
+# (revealed after the agent asks a relevant clarifying question).
+AMBIGUOUS_TICKETS = [
+    {
+        "ticket_id": "AMB-001",
+        "subject": "Having trouble accessing my account",
+        "partial_content": (
+            "Hi, I have been unable to access my account for the past 2 days. "
+            "I use it daily for work and this is causing real problems for me. "
+            "Please help urgently."
+        ),
+        "full_content": (
+            "Hi, I have been unable to access my account for the past 2 days. "
+            "I use it daily for work and this is causing real problems for me. "
+            "I checked and my credit card payment for last month failed because my card expired. "
+            "I updated the card but still cannot get in. "
+            "Is my account suspended due to the failed payment?"
+        ),
+        "customer_name": "Thomas Anderson",
+        "customer_email": "t.anderson@consulting.io",
+        "customer_reply": (
+            "I just checked — my payment from last month failed because my card expired. "
+            "I updated the card details but I still cannot log in. "
+            "Is my account locked because of the missed payment?"
+        ),
+        "clarification_keywords": [
+            "payment", "billing", "charge", "invoice", "subscription", "plan", "paid", "card", "fee",
+        ],
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "high",
+            "issue_keywords": ["payment", "failed", "billing", "card", "subscription", "locked", "access"],
+        },
+    },
+    {
+        "ticket_id": "AMB-002",
+        "subject": "My account is behaving strangely",
+        "partial_content": (
+            "Hello, my account has been acting very strangely for the past few days. "
+            "Things look different and I do not recognise some of the changes. "
+            "Can you check what is happening?"
+        ),
+        "full_content": (
+            "Hello, my account has been acting very strangely for the past few days. "
+            "Things look different and I do not recognise some of the changes. "
+            "I just noticed emails being sent from my account that I never wrote. "
+            "And my password was changed yesterday — but I did not change it. "
+            "I believe someone else has unauthorised access to my account."
+        ),
+        "customer_name": "Amara Diallo",
+        "customer_email": "a.diallo@finance.sn",
+        "customer_reply": (
+            "There are emails sent from my account that I never wrote. "
+            "My password was also changed yesterday without my doing it. "
+            "I think my account has been compromised by an unauthorised party."
+        ),
+        "clarification_keywords": [
+            "security", "unauthorised", "unauthorized", "hacked", "breach", "login",
+            "password", "changed", "suspicious", "access", "strange",
+        ],
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "critical",
+            "issue_keywords": ["hacked", "unauthorised", "compromised", "password", "security", "breach", "access"],
+        },
+    },
+    {
+        "ticket_id": "AMB-003",
+        "subject": "Our system is getting slow and unresponsive",
+        "partial_content": (
+            "Our system has been getting progressively slower over the past week "
+            "and sometimes stops responding entirely. "
+            "We are a team of 15 and this is affecting our productivity significantly."
+        ),
+        "full_content": (
+            "Our system has been getting progressively slower over the past week "
+            "and sometimes stops responding entirely. "
+            "We are a team of 15 and this is affecting our productivity significantly. "
+            "Our developer found that we are consistently hitting 429 Too Many Requests errors. "
+            "We think we may be exceeding our plan's API rate limits. "
+            "Our client deliverable is due tomorrow morning — this is critical."
+        ),
+        "customer_name": "Kwame Asante",
+        "customer_email": "k.asante@agency.gh",
+        "customer_reply": (
+            "Our developer checked the API responses and we are getting 429 Too Many Requests errors. "
+            "We think we have exceeded our plan's API rate limit. "
+            "We have a major client deliverable due tomorrow and need this resolved urgently."
+        ),
+        "clarification_keywords": [
+            "api", "rate", "limit", "error", "code", "technical", "developer",
+            "integration", "requests", "429", "endpoint",
+        ],
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "critical",
+            "issue_keywords": ["api", "rate limit", "429", "requests", "upgrade", "deliverable", "deadline"],
+        },
+    },
+    {
+        "ticket_id": "AMB-004",
+        "subject": "Unexpected changes to our account settings",
+        "partial_content": (
+            "We noticed some unexpected changes to our account settings last week. "
+            "Some configurations we did not make have appeared and some we set have been removed. "
+            "We need to understand what happened."
+        ),
+        "full_content": (
+            "We noticed some unexpected changes to our account settings last week. "
+            "Some configurations we did not make have appeared and some we set have been removed. "
+            "After investigating internally, we discovered a former employee who was terminated "
+            "2 weeks ago still had active admin access to our account. "
+            "We believe he made these changes after his termination. "
+            "We need all recent activity audited and his access revoked immediately."
+        ),
+        "customer_name": "Ingrid Larsson",
+        "customer_email": "i.larsson@nordic.se",
+        "customer_reply": (
+            "A former employee who was terminated 2 weeks ago still had admin access. "
+            "We believe he made these unauthorised changes after being let go. "
+            "We need all activity audited and his access removed immediately."
+        ),
+        "clarification_keywords": [
+            "user", "admin", "access", "permission", "employee", "account",
+            "security", "unauthorised", "unauthorized", "role", "removed", "revoke",
+        ],
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "critical",
+            "issue_keywords": ["admin access", "unauthorised", "audit", "revoke", "terminated", "employee", "security"],
+        },
+    },
+    {
+        "ticket_id": "AMB-005",
+        "subject": "Issue with my payment this month",
+        "partial_content": (
+            "Hello, I am having an issue with my payment this month. "
+            "I can see a transaction on my bank statement that does not look right. "
+            "Could you look into this for me please?"
+        ),
+        "full_content": (
+            "Hello, I am having an issue with my payment this month. "
+            "I can see a transaction on my bank statement that does not look right. "
+            "I was charged twice — once on the 1st for $199 (my normal monthly fee) "
+            "and again on the 3rd for another $199. "
+            "I only have one active subscription. "
+            "It appears your system processed my payment twice and I need the duplicate refunded."
+        ),
+        "customer_name": "Hiroshi Yamamoto",
+        "customer_email": "h.yamamoto@corp.jp",
+        "customer_reply": (
+            "I was charged twice this month — once on the 1st for $199 and again on the 3rd for $199. "
+            "I only have one subscription. "
+            "It looks like your system charged me twice and I need the duplicate $199 refunded."
+        ),
+        "clarification_keywords": [
+            "charge", "charged", "payment", "duplicate", "invoice", "amount",
+            "billing", "subscription", "refund", "transaction", "bank",
+        ],
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "high",
+            "issue_keywords": ["duplicate", "charged twice", "payment", "refund", "billing", "subscription"],
+        },
+    },
+    {
+        "ticket_id": "AMB-006",
+        "subject": "Customers are complaining about using our service",
+        "partial_content": (
+            "We have been getting an increasing number of complaints from our end customers "
+            "saying they cannot use our service properly. "
+            "This started about 3 days ago and has been getting worse."
+        ),
+        "full_content": (
+            "We have been getting an increasing number of complaints from our end customers "
+            "saying they cannot use our service properly. "
+            "This started about 3 days ago and has been getting worse. "
+            "Our engineering team traced it to your embedded widget — "
+            "the browser console shows a CORS error: 'Access-Control-Allow-Origin' header is missing. "
+            "This seems to have started after your deployment on Tuesday. "
+            "All our Chrome and Firefox users are affected and we are losing revenue."
+        ),
+        "customer_name": "Valentina Rossi",
+        "customer_email": "v.rossi@platform.it",
+        "customer_reply": (
+            "Our engineer found a CORS error: the Access-Control-Allow-Origin header is missing "
+            "from your embedded widget responses. This started after your deployment on Tuesday. "
+            "All our Chrome and Firefox users are affected and we are losing revenue."
+        ),
+        "clarification_keywords": [
+            "technical", "error", "api", "code", "integration", "browser", "widget",
+            "developer", "console", "engineer", "javascript", "frontend",
+        ],
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "high",
+            "issue_keywords": ["cors", "widget", "browser", "error", "deployment", "header", "revenue", "customers"],
         },
     },
 ]

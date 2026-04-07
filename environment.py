@@ -23,10 +23,10 @@ except ImportError:
 
 try:
     from .models import SupportAction, SupportObservation, SupportState, TicketInfo
-    from .data import TICKETS, TICKET_QUEUES
+    from .data import TICKETS, TICKET_QUEUES, AMBIGUOUS_TICKETS
 except ImportError:
     from models import SupportAction, SupportObservation, SupportState, TicketInfo
-    from data import TICKETS, TICKET_QUEUES
+    from data import TICKETS, TICKET_QUEUES, AMBIGUOUS_TICKETS
 
 
 # ── Step instructions shown to the agent ─────────────────────────────────────
@@ -83,12 +83,37 @@ TASK_DESCRIPTIONS: Dict[str, Dict[int, str]] = {
             "\"escalation_response\": \"<full professional response>\"}"
         ),
     },
+    "resolve_ticket": {
+        0: (
+            "TASK: Resolve this ambiguous support ticket through clarification.\n"
+            "Step 1 of 3 — The ticket is vague. Ask ONE specific clarifying question to identify the real issue.\n"
+            "Be targeted: ask about the most likely unclear aspect (billing, technical error, account access, etc.).\n"
+            "Output ONLY: {\"clarification_request\": \"<your specific question to the customer>\"}"
+        ),
+        1: (
+            "TASK: Resolve this ambiguous support ticket.\n"
+            "Step 2 of 3 — The customer has responded with more details (see 'Customer Reply' below).\n"
+            "Now classify the ticket using ALL information gathered.\n"
+            "Submit BOTH category AND urgency in a single action.\n"
+            "Valid categories: 'billing', 'technical', 'account', 'general'\n"
+            "Valid urgency: 'low', 'medium', 'high', 'critical'\n"
+            "Output ONLY: {\"classification\": \"<value>\", \"urgency\": \"<value>\"}"
+        ),
+        2: (
+            "TASK: Resolve this ambiguous support ticket.\n"
+            "Step 3 of 3 — Write a full, personalised resolution response to the customer.\n"
+            "Use specifics from the clarification exchange. Include: empathy, acknowledgment of the exact issue, "
+            "clear next steps, and a timeline commitment.\n"
+            "Output ONLY: {\"response_draft\": \"<your complete response to the customer>\"}"
+        ),
+    },
 }
 
 MAX_STEPS_PER_TASK: Dict[str, int] = {
     "classify_ticket": 2,
     "draft_response": 3,
     "triage_queue": 2,
+    "resolve_ticket": 3,
 }
 
 
@@ -153,6 +178,10 @@ class SupportTriageEnvironment(Environment):
         if task not in MAX_STEPS_PER_TASK:
             task = "classify_ticket"
 
+        full_content: Optional[str] = None
+        customer_reply: Optional[str] = None
+        clarification_keywords: List[str] = []
+
         rng = random.Random(seed)
         eid = episode_id or str(uuid4())
 
@@ -168,7 +197,7 @@ class SupportTriageEnvironment(Environment):
             ground_truth: Dict[str, Any] = {**raw["ground_truth"], "subject": raw["subject"]}
             queue: Optional[List[TicketInfo]] = None
             queue_gt: List[Dict[str, Any]] = []
-        else:
+        elif task == "triage_queue":
             raw_queue = rng.choice(TICKET_QUEUES)
             ticket = None
             queue = [
@@ -183,6 +212,22 @@ class SupportTriageEnvironment(Environment):
             ]
             ground_truth = raw_queue["ground_truth"]
             queue_gt = raw_queue["ground_truth"]["classifications"]
+        else:  # resolve_ticket
+            raw = rng.choice(AMBIGUOUS_TICKETS)
+            # Show only partial content initially — agent must ask to get the full story
+            ticket = TicketInfo(
+                ticket_id=raw["ticket_id"],
+                subject=raw["subject"],
+                content=raw["partial_content"],
+                customer_name=raw["customer_name"],
+                customer_email=raw["customer_email"],
+            )
+            ground_truth = {**raw["ground_truth"], "subject": raw["subject"]}
+            queue = None
+            queue_gt = []
+            full_content = raw["full_content"]
+            customer_reply = raw["customer_reply"]
+            clarification_keywords = raw["clarification_keywords"]
 
         self._state = SupportState(
             episode_id=eid,
@@ -195,6 +240,10 @@ class SupportTriageEnvironment(Environment):
             score=0.0,
             ground_truth=ground_truth,
             queue_ground_truth=queue_gt,
+            full_content=full_content,
+            customer_reply=customer_reply,
+            clarification_keywords=clarification_keywords,
+            clarification_done=False,
         )
 
         return SupportObservation(
@@ -228,6 +277,21 @@ class SupportTriageEnvironment(Environment):
 
         reward, result_msg = self._grade(task, current_step, action, s.ground_truth)
 
+        # resolve_ticket: after clarification step, reveal full content + customer reply
+        revealed_info: Optional[str] = None
+        if task == "resolve_ticket" and current_step == 0 and s.full_content and s.customer_reply:
+            s.ticket = TicketInfo(
+                ticket_id=s.ticket.ticket_id,
+                subject=s.ticket.subject,
+                content=s.full_content,
+                customer_name=s.ticket.customer_name,
+                customer_email=s.ticket.customer_email,
+            )
+            s.clarification_done = True
+            revealed_info = f"Customer reply: {s.customer_reply}"
+        elif task == "resolve_ticket" and s.clarification_done and s.customer_reply:
+            revealed_info = f"Customer reply: {s.customer_reply}"
+
         s.score += reward
         s.step += 1
         done = s.step >= s.max_steps
@@ -255,6 +319,7 @@ class SupportTriageEnvironment(Environment):
             last_action_result=result_msg,
             score=s.score,
             reward=reward,
+            revealed_info=revealed_info,
             metadata=meta,
         )
 
@@ -293,6 +358,8 @@ class SupportTriageEnvironment(Environment):
             return self._grade_draft(step, action, gt)
         elif task == "triage_queue":
             return self._grade_triage(step, action, gt)
+        elif task == "resolve_ticket":
+            return self._grade_resolve(step, action, gt)
         return 0.0, "Unknown task."
 
     # ── Valid value sets for penalty checks ───────────────────────────────────
@@ -441,6 +508,109 @@ class SupportTriageEnvironment(Environment):
             )
             return total, msg
 
+    # resolve_ticket ───────────────────────────────────────────────────────────
+
+    def _grade_resolve(
+        self, step: int, action: SupportAction, gt: Dict[str, Any]
+    ) -> Tuple[float, str]:
+        """
+        Grader for the multi-turn resolve_ticket task.
+
+        Step 0 — Clarification quality (+0.10 max, -0.10 if empty):
+            Measures whether the agent asked a targeted, relevant question.
+            Scored by keyword overlap between the question and clarification_keywords.
+
+        Step 1 — Classification with full context (+0.40 max):
+            Agent must submit BOTH category (+0.25) and urgency (+0.15) correctly.
+            Invalid values carry -0.10 penalty each.
+
+        Step 2 — Response quality (+0.50 max):
+            Uses the enriched 7-criterion rubric × 0.50 weight.
+
+        Max total: 1.00
+        """
+        if step == 0:
+            question = (action.clarification_request or "").strip()
+            if not question:
+                return -0.10, "No clarification question submitted. Penalty -0.10."
+            if len(question) < 10:
+                return -0.05, "Clarification too brief to be useful. Penalty -0.05."
+
+            q_lower = question.lower()
+            clue_kws: List[str] = self._state.clarification_keywords if self._state else []
+            matched = sum(1 for kw in clue_kws if kw in q_lower)
+            if matched >= 2:
+                reward, quality = 0.10, "targeted"
+            elif matched == 1:
+                reward, quality = 0.05, "partially relevant"
+            else:
+                reward, quality = -0.05, "off-target"
+
+            msg = (
+                f"Clarification question: {quality} "
+                f"({matched}/{len(clue_kws)} relevant keywords matched). "
+                f"Reward: {reward:+.2f}/0.10. "
+                f"Full ticket details now revealed."
+            )
+            return reward, msg
+
+        elif step == 1:
+            # Both classification and urgency in one action
+            cls_submitted = (action.classification or "").lower().strip()
+            urg_submitted = (action.urgency or "").lower().strip()
+            reward = 0.0
+            parts = []
+
+            # Classification
+            if not cls_submitted:
+                reward -= 0.10
+                parts.append("No classification submitted (-0.10)")
+            elif cls_submitted not in self.VALID_CLASSIFICATIONS:
+                reward -= 0.10
+                parts.append(f"Invalid classification '{cls_submitted}' (-0.10)")
+            elif cls_submitted == gt["classification"]:
+                reward += 0.25
+                parts.append(f"Classification '{cls_submitted}' ✓ (+0.25)")
+            else:
+                parts.append(f"Classification '{cls_submitted}' ✗ (expected '{gt['classification']}')")
+
+            # Urgency
+            if not urg_submitted:
+                reward -= 0.10
+                parts.append("No urgency submitted (-0.10)")
+            elif urg_submitted not in self.VALID_URGENCIES:
+                reward -= 0.10
+                parts.append(f"Invalid urgency '{urg_submitted}' (-0.10)")
+            elif urg_submitted == gt["urgency"]:
+                reward += 0.15
+                parts.append(f"Urgency '{urg_submitted}' ✓ (+0.15)")
+            else:
+                parts.append(f"Urgency '{urg_submitted}' ✗ (expected '{gt['urgency']}')")
+
+            return round(reward, 4), " | ".join(parts)
+
+        else:  # step == 2
+            quality = self._score_response(action.response_draft, gt)
+            reward = round(quality * 0.50, 4)
+            msg = f"Response quality: {quality:.2f}/1.00 → reward +{reward:.2f}/0.50"
+            return reward, msg
+
+    # ── Helpers ───────────────────────────────────────────────────────────────
+
+    def _char_trigram_overlap(self, text1: str, text2: str) -> float:
+        """
+        Jaccard similarity of character trigrams between two texts.
+        Returns 0.0–1.0. Rewards vocabulary specificity in responses.
+        """
+        def trigrams(s: str):
+            s = s.lower().strip()
+            return {s[i: i + 3] for i in range(len(s) - 2)} if len(s) >= 3 else set()
+
+        t1, t2 = trigrams(text1), trigrams(text2)
+        if not t1 or not t2:
+            return 0.0
+        return len(t1 & t2) / len(t1 | t2)
+
     # Response quality scorer ──────────────────────────────────────────────────
 
     def _score_response(self, response: Optional[str], gt: Dict[str, Any]) -> float:
@@ -522,9 +692,16 @@ class SupportTriageEnvironment(Environment):
         if not any(w in r for w in rude):
             score += 0.10
 
-        # Penalty: response just echoes the subject line
+        # Penalty: response just echoes the subject line verbatim
         subject = gt.get("subject", "").lower()
         if subject and len(subject) > 10 and subject in r:
             score -= 0.10
+
+        # Specificity bonus: character trigram overlap with issue keywords
+        # Rewards responses that use vocabulary drawn from the actual ticket content
+        issue_reference = " ".join(gt.get("issue_keywords", []))
+        if issue_reference and len(text) >= 30:
+            overlap = self._char_trigram_overlap(text, issue_reference)
+            score += min(overlap * 0.15, 0.08)  # up to +0.08 bonus
 
         return round(min(max(score, -0.20), 1.0), 4)
