@@ -1,6 +1,8 @@
 """FastAPI application for the Support Triage Environment."""
 import os
 
+from fastapi.responses import RedirectResponse
+
 try:
     from openenv.core.env_server.http_server import create_app
     from ..models import SupportAction, SupportObservation
@@ -23,6 +25,12 @@ app = create_app(
     env_name="support_triage_env",
     max_concurrent_envs=16,
 )
+
+
+@app.get("/", include_in_schema=False)
+def root():
+    """Redirect root to the interactive API docs."""
+    return RedirectResponse(url="/docs")
 
 
 def main() -> None:
