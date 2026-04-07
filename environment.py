@@ -2,10 +2,10 @@
 Support Triage Environment — core implementation.
 
 An OpenEnv environment where an AI agent learns to handle customer support tickets.
-Three tasks with increasing difficulty, deterministic graders, and partial rewards.
+Four tasks with increasing difficulty, deterministic graders, and partial rewards.
 """
 import random
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 from uuid import uuid4
 
 try:
@@ -151,6 +151,13 @@ class SupportTriageEnvironment(Environment):
 
     SUPPORTS_CONCURRENT_SESSIONS = True
 
+    # ── Class-level shared state ───────────────────────────────────────────────
+    # The OpenEnv HTTP server creates a NEW environment instance per request and
+    # calls close() after each one. With a single worker (--workers 1), storing
+    # the active episode at class level lets reset() and step() share state across
+    # separate HTTP requests — fixing the 500 error on /step after /reset.
+    _active_episode: ClassVar[Optional["SupportState"]] = None
+
     def __init__(self) -> None:
         self._state: Optional[SupportState] = None
 
@@ -246,6 +253,10 @@ class SupportTriageEnvironment(Environment):
             clarification_done=False,
         )
 
+        # Persist episode at class level so the HTTP server's next request
+        # (which creates a fresh instance) can still find the active state.
+        SupportTriageEnvironment._active_episode = self._state
+
         return SupportObservation(
             task_name=task,
             ticket=ticket,
@@ -268,8 +279,13 @@ class SupportTriageEnvironment(Environment):
         advances the step counter, and marks the episode done when
         all required steps are complete.
         """
+        # If this instance was freshly created by the HTTP server factory (instance
+        # state is None), load the active episode from the class-level store.
         if self._state is None:
-            raise RuntimeError("Environment not initialised. Call reset() first.")
+            if SupportTriageEnvironment._active_episode is not None:
+                self._state = SupportTriageEnvironment._active_episode
+            else:
+                raise RuntimeError("Environment not initialised. Call reset() first.")
 
         s = self._state
         task = s.task_name
@@ -296,6 +312,8 @@ class SupportTriageEnvironment(Environment):
         s.step += 1
         done = s.step >= s.max_steps
         s.done = done
+        # Keep class-level episode in sync after every step
+        SupportTriageEnvironment._active_episode = s
 
         next_desc = (
             TASK_DESCRIPTIONS[task].get(s.step, f"Episode complete. Total score: {s.score:.2f}")
@@ -325,11 +343,17 @@ class SupportTriageEnvironment(Environment):
 
     @property
     def state(self) -> SupportState:
+        # Fall back to class-level active episode for HTTP server compatibility
+        if self._state is None and SupportTriageEnvironment._active_episode is not None:
+            return SupportTriageEnvironment._active_episode
         if self._state is None:
             raise RuntimeError("Call reset() first.")
         return self._state
 
     def close(self) -> None:
+        # Clear instance state only. The class-level _active_episode is intentionally
+        # kept alive so the next HTTP request (new instance) can still call step().
+        # _active_episode is only replaced when reset() starts a new episode.
         self._state = None
 
     def get_metadata(self) -> EnvironmentMetadata:
