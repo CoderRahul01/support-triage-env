@@ -165,7 +165,7 @@ class SupportTriageEnvironment(Environment):
                 customer_name=raw["customer_name"],
                 customer_email=raw["customer_email"],
             )
-            ground_truth: Dict[str, Any] = raw["ground_truth"]
+            ground_truth: Dict[str, Any] = {**raw["ground_truth"], "subject": raw["subject"]}
             queue: Optional[List[TicketInfo]] = None
             queue_gt: List[Dict[str, Any]] = []
         else:
@@ -295,6 +295,10 @@ class SupportTriageEnvironment(Environment):
             return self._grade_triage(step, action, gt)
         return 0.0, "Unknown task."
 
+    # ── Valid value sets for penalty checks ───────────────────────────────────
+    VALID_CLASSIFICATIONS = {"billing", "technical", "account", "general"}
+    VALID_URGENCIES = {"low", "medium", "high", "critical"}
+
     # classify_ticket ──────────────────────────────────────────────────────────
 
     def _grade_classify(
@@ -302,6 +306,13 @@ class SupportTriageEnvironment(Environment):
     ) -> Tuple[float, str]:
         if step == 0:
             submitted = (action.classification or "").lower().strip()
+            if not submitted:
+                return -0.10, "No classification submitted. Penalty -0.10."
+            if submitted not in self.VALID_CLASSIFICATIONS:
+                return -0.10, (
+                    f"Invalid classification '{submitted}'. "
+                    f"Must be one of {sorted(self.VALID_CLASSIFICATIONS)}. Penalty -0.10."
+                )
             correct = submitted == gt["classification"]
             reward = 0.50 if correct else 0.0
             msg = (
@@ -312,6 +323,13 @@ class SupportTriageEnvironment(Environment):
             return reward, msg
         else:
             submitted = (action.urgency or "").lower().strip()
+            if not submitted:
+                return -0.10, "No urgency submitted. Penalty -0.10."
+            if submitted not in self.VALID_URGENCIES:
+                return -0.10, (
+                    f"Invalid urgency '{submitted}'. "
+                    f"Must be one of {sorted(self.VALID_URGENCIES)}. Penalty -0.10."
+                )
             correct = submitted == gt["urgency"]
             reward = 0.50 if correct else 0.0
             msg = (
@@ -328,6 +346,13 @@ class SupportTriageEnvironment(Environment):
     ) -> Tuple[float, str]:
         if step == 0:
             submitted = (action.classification or "").lower().strip()
+            if not submitted:
+                return -0.10, "No classification submitted. Penalty -0.10."
+            if submitted not in self.VALID_CLASSIFICATIONS:
+                return -0.10, (
+                    f"Invalid classification '{submitted}'. "
+                    f"Must be one of {sorted(self.VALID_CLASSIFICATIONS)}. Penalty -0.10."
+                )
             correct = submitted == gt["classification"]
             reward = 0.20 if correct else 0.0
             msg = (
@@ -338,6 +363,13 @@ class SupportTriageEnvironment(Environment):
             return reward, msg
         elif step == 1:
             submitted = (action.urgency or "").lower().strip()
+            if not submitted:
+                return -0.10, "No urgency submitted. Penalty -0.10."
+            if submitted not in self.VALID_URGENCIES:
+                return -0.10, (
+                    f"Invalid urgency '{submitted}'. "
+                    f"Must be one of {sorted(self.VALID_URGENCIES)}. Penalty -0.10."
+                )
             correct = submitted == gt["urgency"]
             reward = 0.10 if correct else 0.0
             msg = (
@@ -383,6 +415,17 @@ class SupportTriageEnvironment(Environment):
             return reward, msg
         else:  # step == 1
             submitted_id = (action.escalate_ticket_id or "").strip()
+            if not submitted_id:
+                return -0.10, "No escalation ticket ID submitted. Penalty -0.10."
+
+            # Check submitted ID is actually one of the queue ticket IDs
+            valid_ids = {c["ticket_id"] for c in gt["classifications"]}
+            if submitted_id not in valid_ids:
+                return -0.15, (
+                    f"Ticket ID '{submitted_id}' not in this queue. "
+                    f"Valid IDs: {sorted(valid_ids)}. Penalty -0.15."
+                )
+
             correct_id = submitted_id == gt["escalate_ticket_id"]
             id_reward = 0.30 if correct_id else 0.0
 
@@ -402,48 +445,86 @@ class SupportTriageEnvironment(Environment):
 
     def _score_response(self, response: Optional[str], gt: Dict[str, Any]) -> float:
         """
-        Score a customer response draft from 0.0 to 1.0 using deterministic checks.
+        Score a customer support response draft from 0.0 to 1.0.
 
-        Rubric:
-          0.15  — Has a greeting (hello / hi / dear / thank you)
-          0.30  — Acknowledges the specific issue (ticket keyword match)
-          0.25  — Contains resolution language (next steps, fix, investigate, etc.)
-          0.20  — Adequate length (≥ 80 characters)
-          0.10  — Professional tone (no rude/offensive words)
+        Rubric (deterministic, keyword-based):
+          0.10  — Greeting (hello / hi / dear / thank you)
+          0.10  — Empathy / apology (sorry / apologise / understand / regret)
+          0.25  — Issue acknowledgment (matches ticket-specific keywords)
+          0.20  — Resolution / next-steps language
+          0.10  — Commitment or timeline (e.g. "within 24 hours", "immediately")
+          0.15  — Adequate length (≥ 100 chars = professional; ≥ 40 = partial)
+          0.10  — Professional tone (no rude / dismissive language)
+
+        Penalty:
+          -0.20 — Response is shorter than 20 characters (too short to be useful)
+          -0.10 — Response simply echoes the ticket subject verbatim
         """
         if not response or len(response.strip()) < 10:
             return 0.0
 
-        r = response.lower()
+        text = response.strip()
+        r = text.lower()
         score = 0.0
 
+        # Too short to be a real response
+        if len(text) < 20:
+            return -0.20
+
         # Greeting
-        if any(g in r for g in ["hello", "hi ", "dear ", "thank you for", "thanks for"]):
-            score += 0.15
-
-        # Issue acknowledgment — matches keywords from the specific ticket
-        issue_kws = gt.get("issue_keywords", [])
-        if issue_kws and any(kw.lower() in r for kw in issue_kws):
-            score += 0.30
-
-        # Resolution / next steps language
-        resolution = [
-            "resolve", "fix", "help", "assist", "solution", "escalat",
-            "investigate", "look into", "steps", "guide", "refund",
-            "team", "engineer", "reset", "update", "follow up", "follow-up",
-        ]
-        if any(w in r for w in resolution):
-            score += 0.25
-
-        # Length
-        if len(response.strip()) >= 80:
-            score += 0.20
-        elif len(response.strip()) >= 30:
+        if any(g in r for g in ["hello", "hi ", "hi,", "dear ", "thank you for", "thanks for"]):
             score += 0.10
 
-        # Professionalism
-        rude = ["stupid", "idiot", "hate", "worst", "ridiculous", "incompetent"]
+        # Empathy / apology
+        if any(e in r for e in ["sorry", "apologis", "apologiz", "understand", "regret", "sincerely"]):
+            score += 0.10
+
+        # Issue acknowledgment — ticket-specific keywords
+        issue_kws = gt.get("issue_keywords", [])
+        matched_kws = sum(1 for kw in issue_kws if kw.lower() in r) if issue_kws else 0
+        if matched_kws >= 2:
+            score += 0.25
+        elif matched_kws == 1:
+            score += 0.12
+
+        # Resolution / action language
+        resolution = [
+            "resolve", "fix", "help", "assist", "solution", "escalat",
+            "investigate", "look into", "next step", "guide", "refund",
+            "restore", "reset", "update", "reverse", "correct", "credit",
+            "engineer", "team", "follow up", "follow-up", "working on",
+            "priority", "urgent", "immediately", "right away",
+        ]
+        matched_res = sum(1 for w in resolution if w in r)
+        if matched_res >= 2:
+            score += 0.20
+        elif matched_res == 1:
+            score += 0.10
+
+        # Commitment or timeline
+        timeline = [
+            "within 24", "within 48", "within 1 hour", "within an hour",
+            "immediately", "right away", "as soon as", "by end of day",
+            "today", "shortly", "asap", "promptly",
+        ]
+        if any(t in r for t in timeline):
+            score += 0.10
+
+        # Length quality
+        if len(text) >= 100:
+            score += 0.15
+        elif len(text) >= 40:
+            score += 0.07
+
+        # Professionalism (no rude / dismissive language)
+        rude = ["stupid", "idiot", "hate", "worst", "ridiculous", "incompetent",
+                "not my problem", "not our fault", "deal with it"]
         if not any(w in r for w in rude):
             score += 0.10
 
-        return min(score, 1.0)
+        # Penalty: response just echoes the subject line
+        subject = gt.get("subject", "").lower()
+        if subject and len(subject) > 10 and subject in r:
+            score -= 0.10
+
+        return round(min(max(score, -0.20), 1.0), 4)

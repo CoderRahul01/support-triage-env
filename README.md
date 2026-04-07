@@ -105,17 +105,30 @@ Only populate the fields relevant to the current step (the `task_description` in
 
 ## Reward design
 
-Rewards are **partial and deterministic** — no binary pass/fail.
+Rewards are **partial and deterministic** — no binary pass/fail. Agents receive signal on every step, including penalties for invalid or low-quality actions.
 
-| Component | Trigger | Max value |
+| Component | Trigger | Value |
 |---|---|---|
-| Correct classification | Exact string match | 0.20–0.50 |
-| Correct urgency | Exact string match | 0.10–0.50 |
-| Response quality | Multi-criterion keyword rubric | 0.30–0.70 |
-| Correct escalation target | Exact ticket ID match | 0.30 |
-| Queue classification accuracy | Per-ticket accuracy | 0.40 |
+| Correct classification | Exact string match | +0.20 to +0.50 |
+| Correct urgency | Exact string match | +0.10 to +0.50 |
+| Response quality | 7-criterion rubric | +0.00 to +0.70 |
+| Correct escalation target | Exact ticket ID match | +0.30 |
+| Queue classification accuracy | Per-ticket accuracy | up to +0.40 |
+| **Invalid classification/urgency value** | Submitted value not in valid set | **−0.10** |
+| **Invalid escalation ticket ID** | ID not in current queue | **−0.15** |
+| **Empty response** | Response < 20 characters | **−0.20** |
 
-The response rubric checks: greeting presence (0.15), issue keyword acknowledgment (0.30), resolution language (0.25), adequate length (0.20), professionalism (0.10).
+### Response quality rubric (7 criteria, max 1.0)
+
+| Criterion | Points |
+|---|---|
+| Greeting | 0.10 |
+| Empathy / apology | 0.10 |
+| Issue acknowledgment (≥2 ticket keywords) | 0.25 |
+| Resolution / action language (≥2 terms) | 0.20 |
+| Commitment / timeline ("within 24 hours", etc.) | 0.10 |
+| Length ≥ 100 chars | 0.15 |
+| Professional tone | 0.10 |
 
 ---
 
@@ -185,12 +198,14 @@ curl http://localhost:8000/health
 
 Measured with `Qwen/Qwen2.5-72B-Instruct` via HuggingFace Inference API (seed=42):
 
-| Task | Score |
-|---|---|
-| classify_ticket | ~0.75 |
-| draft_response | ~0.65 |
-| triage_queue | ~0.55 |
-| **Overall** | **~0.65** |
+| Task | Score | Notes |
+|---|---|---|
+| classify_ticket | ~0.75 | Strong on obvious categories; may miss ambiguous urgency |
+| draft_response | ~0.65 | Good classification; response quality varies by ticket |
+| triage_queue | ~0.50 | QUEUE-005/006 (multiple criticals) challenge even frontier models |
+| **Overall** | **~0.63** | |
+
+Dataset: 30 tickets × 4 categories × 4 urgency levels. 6 queues including 2 with multiple critical tickets requiring business-impact reasoning.
 
 ---
 

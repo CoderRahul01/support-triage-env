@@ -1,11 +1,13 @@
 """
 Synthetic support ticket data with deterministic ground-truth labels.
-All 15 tickets cover real-world scenarios across 4 categories.
-3 pre-built queues are used for the triage_queue task.
+30 tickets covering real-world scenarios across 4 categories,
+including ambiguous cases that challenge frontier models.
+6 pre-built queues used for the triage_queue task.
 """
 from typing import Any, Dict, List
 
 TICKETS: List[Dict[str, Any]] = [
+    # ── Original 15 ──────────────────────────────────────────────────────────
     {
         "ticket_id": "TKT-001",
         "subject": "Wrong charge on my invoice",
@@ -251,11 +253,261 @@ TICKETS: List[Dict[str, Any]] = [
             "issue_keywords": ["email", "spam", "automated", "customer", "communication", "delivery"],
         },
     },
+
+    # ── New tickets — harder, more ambiguous ──────────────────────────────────
+    {
+        "ticket_id": "TKT-016",
+        "subject": "Production database showing corruption errors — data loss imminent",
+        "content": (
+            "Our production database is throwing corruption errors and some records "
+            "are already missing from the last 6 hours. This affects 50,000 active users. "
+            "We need an emergency engineer on this immediately. "
+            "Every minute of delay risks permanent data loss."
+        ),
+        "customer_name": "Liam O'Brien",
+        "customer_email": "liam@scaleup.ie",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "critical",
+            "issue_keywords": ["database", "corruption", "data loss", "production", "records", "emergency"],
+        },
+    },
+    {
+        "ticket_id": "TKT-017",
+        "subject": "Account suspended without warning — hospital system down",
+        "content": (
+            "Our hospital's patient management system is connected to your platform via API. "
+            "Our account was suspended this morning without any prior notice. "
+            "Clinical staff cannot access patient records. "
+            "This is a medical emergency situation — please restore access immediately."
+        ),
+        "customer_name": "Dr. Sarah Okonkwo",
+        "customer_email": "s.okonkwo@cityhospital.ng",
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "critical",
+            "issue_keywords": ["suspended", "hospital", "patient", "access", "medical", "clinical", "records"],
+        },
+    },
+    {
+        "ticket_id": "TKT-018",
+        "subject": "Interested in enterprise pricing for 500+ seats",
+        "content": (
+            "Hi, we are a Fortune 500 company evaluating your platform for company-wide deployment. "
+            "We would need approximately 500-700 seats. "
+            "Can you share your enterprise pricing and connect us with a sales representative?"
+        ),
+        "customer_name": "Michael Torres",
+        "customer_email": "m.torres@fortune500.com",
+        "ground_truth": {
+            "classification": "general",
+            "urgency": "medium",
+            "issue_keywords": ["enterprise", "pricing", "seats", "sales", "company", "deployment"],
+        },
+    },
+    {
+        "ticket_id": "TKT-019",
+        "subject": "Duplicate payment — charged twice for same invoice",
+        "content": (
+            "Your system processed my payment twice for invoice #INV-2025-0892. "
+            "I have been charged $1,200 twice ($2,400 total) on my corporate card. "
+            "I need one charge reversed immediately as this is causing issues with our finance team."
+        ),
+        "customer_name": "Beatrice Osei",
+        "customer_email": "b.osei@corpfinance.gh",
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "high",
+            "issue_keywords": ["duplicate", "payment", "charged", "invoice", "refund", "finance", "reversed"],
+        },
+    },
+    {
+        "ticket_id": "TKT-020",
+        "subject": "Cannot log in after mandatory password reset",
+        "content": (
+            "You sent a mandatory password reset email. I reset my password but now "
+            "the system says my credentials are invalid. I have tried 5 times and "
+            "my account is now locked. I have a board presentation starting in 45 minutes."
+        ),
+        "customer_name": "Alexander Petrov",
+        "customer_email": "a.petrov@boardroom.ru",
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "critical",
+            "issue_keywords": ["login", "password", "locked", "credentials", "account", "access", "board"],
+        },
+    },
+    {
+        "ticket_id": "TKT-021",
+        "subject": "Salesforce integration stopped syncing — sales data stale",
+        "content": (
+            "Our Salesforce CRM integration stopped syncing 3 days ago. "
+            "Our sales team is working from stale data and we have closed deals "
+            "that are not showing up in the platform. Quarter-end is this Friday."
+        ),
+        "customer_name": "Jessica Park",
+        "customer_email": "j.park@salesteam.us",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "high",
+            "issue_keywords": ["salesforce", "integration", "sync", "data", "sales", "quarter"],
+        },
+    },
+    {
+        "ticket_id": "TKT-022",
+        "subject": "Need VAT invoice for EU compliance audit",
+        "content": (
+            "We are undergoing a compliance audit in Germany and our auditors require "
+            "VAT-compliant invoices for all our 2024 payments. "
+            "Your current invoices do not include our VAT number or the required EU format. "
+            "Audit deadline is in 10 days."
+        ),
+        "customer_name": "Klaus Wagner",
+        "customer_email": "k.wagner@audit.de",
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "medium",
+            "issue_keywords": ["vat", "invoice", "compliance", "audit", "germany", "eu", "format"],
+        },
+    },
+    {
+        "ticket_id": "TKT-023",
+        "subject": "Webhook delivery failing — payments not being processed",
+        "content": (
+            "Your webhooks have been returning 502 errors for the past 4 hours. "
+            "Our payment processor relies on these webhooks to confirm transactions. "
+            "We have had approximately 340 failed payment confirmations. "
+            "Customers are being charged but not getting access."
+        ),
+        "customer_name": "Carlos Reyes",
+        "customer_email": "c.reyes@paytech.mx",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "critical",
+            "issue_keywords": ["webhook", "502", "payment", "transaction", "failed", "error", "confirm"],
+        },
+    },
+    {
+        "ticket_id": "TKT-024",
+        "subject": "How to migrate data to new workspace?",
+        "content": (
+            "Our company is restructuring and we need to split one workspace into two. "
+            "We have about 5,000 projects and 200 users that need to be migrated. "
+            "Is there a bulk migration tool? What is the recommended process?"
+        ),
+        "customer_name": "Priyanka Nair",
+        "customer_email": "p.nair@restructure.in",
+        "ground_truth": {
+            "classification": "general",
+            "urgency": "medium",
+            "issue_keywords": ["migrate", "workspace", "projects", "users", "bulk", "split"],
+        },
+    },
+    {
+        "ticket_id": "TKT-025",
+        "subject": "Suspicious login from foreign IP — possible breach",
+        "content": (
+            "I received an alert that someone logged into my account from an IP in Belarus. "
+            "I am based in Canada and have never accessed from there. "
+            "I immediately changed my password but I'm concerned my data may be compromised. "
+            "Can you investigate and tell me what data was accessed?"
+        ),
+        "customer_name": "Emma Delacroix",
+        "customer_email": "e.delacroix@consulting.ca",
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "critical",
+            "issue_keywords": ["suspicious", "login", "breach", "ip", "security", "compromised", "unauthorised"],
+        },
+    },
+    {
+        "ticket_id": "TKT-026",
+        "subject": "Monthly report not generating — management review tomorrow",
+        "content": (
+            "The automated monthly performance report failed to generate this month. "
+            "I tried manually triggering it but get an error: 'Report generation timeout'. "
+            "My management team review is tomorrow morning and they need this data."
+        ),
+        "customer_name": "Samuel Adeyemi",
+        "customer_email": "s.adeyemi@corp.ng",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "high",
+            "issue_keywords": ["report", "generate", "timeout", "error", "management", "automated"],
+        },
+    },
+    {
+        "ticket_id": "TKT-027",
+        "subject": "Charged in USD instead of GBP",
+        "content": (
+            "My account is set to GBP but I was charged in USD this month. "
+            "Due to the exchange rate, I was effectively overcharged by about 22%. "
+            "Please correct the currency and refund the difference."
+        ),
+        "customer_name": "Oliver Hartley",
+        "customer_email": "o.hartley@media.co.uk",
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "medium",
+            "issue_keywords": ["currency", "usd", "gbp", "exchange", "overcharged", "refund"],
+        },
+    },
+    {
+        "ticket_id": "TKT-028",
+        "subject": "How to configure SSO with Okta?",
+        "content": (
+            "We want to set up Single Sign-On using Okta for our enterprise account. "
+            "I have found the SSO settings but the SAML configuration is not clear. "
+            "Do you have step-by-step documentation? Is this supported on our current plan?"
+        ),
+        "customer_name": "Tanvir Ahmed",
+        "customer_email": "t.ahmed@enterprise.pk",
+        "ground_truth": {
+            "classification": "general",
+            "urgency": "low",
+            "issue_keywords": ["sso", "okta", "saml", "single sign-on", "configure", "enterprise"],
+        },
+    },
+    {
+        "ticket_id": "TKT-029",
+        "subject": "SSL certificate expired — site showing security warning",
+        "content": (
+            "The SSL certificate on our embedded widget expired this morning. "
+            "Our customers are seeing browser security warnings when visiting our checkout page. "
+            "This is causing abandoned carts and revenue loss. "
+            "We need this fixed in the next hour or we will be forced to take the site down."
+        ),
+        "customer_name": "Mei Suzuki",
+        "customer_email": "m.suzuki@ecommerce.jp",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "critical",
+            "issue_keywords": ["ssl", "certificate", "expired", "security", "checkout", "revenue", "warning"],
+        },
+    },
+    {
+        "ticket_id": "TKT-030",
+        "subject": "Accidentally deleted entire project — need recovery",
+        "content": (
+            "I accidentally deleted our main project which contains 18 months of work. "
+            "It happened about 10 minutes ago. I did not have a backup. "
+            "Please tell me if there is any way to recover this. "
+            "The project name was 'Q4-2024-Campaign' under my account."
+        ),
+        "customer_name": "Gabriela Santos",
+        "customer_email": "g.santos@agency.br",
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "critical",
+            "issue_keywords": ["deleted", "project", "recover", "backup", "lost", "data", "restore"],
+        },
+    },
 ]
 
 
 # ── Pre-built queues for the triage_queue task ─────────────────────────────────
 TICKET_QUEUES: List[Dict[str, Any]] = [
+    # QUEUE-001: One obvious critical (account), rest routine
     {
         "queue_id": "QUEUE-001",
         "tickets": [
@@ -277,6 +529,7 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             ],
         },
     },
+    # QUEUE-002: Critical is a launch blocker (technical)
     {
         "queue_id": "QUEUE-002",
         "tickets": [
@@ -298,6 +551,7 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             ],
         },
     },
+    # QUEUE-003: Billing dispute as critical
     {
         "queue_id": "QUEUE-003",
         "tickets": [
@@ -316,6 +570,76 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
                 {"ticket_id": "TKT-014", "classification": "billing",   "urgency": "low"},
                 {"ticket_id": "TKT-015", "classification": "technical", "urgency": "high"},
                 {"ticket_id": "TKT-001", "classification": "billing",   "urgency": "high"},
+            ],
+        },
+    },
+    # QUEUE-004 (harder): Two "high" tickets + one critical security breach
+    # Agent must reason: security breach > revenue loss > data sync
+    {
+        "queue_id": "QUEUE-004",
+        "tickets": [
+            TICKETS[20],  # TKT-021: Salesforce sync (technical, high)
+            TICKETS[18],  # TKT-019: duplicate payment (billing, high)
+            TICKETS[24],  # TKT-025: suspicious login/breach ← ESCALATE (account, critical)
+            TICKETS[21],  # TKT-022: VAT invoice audit (billing, medium)
+            TICKETS[23],  # TKT-024: workspace migration (general, medium)
+        ],
+        "ground_truth": {
+            "escalate_ticket_id": "TKT-025",
+            "issue_keywords": ["suspicious", "login", "breach", "ip", "security", "compromised"],
+            "classifications": [
+                {"ticket_id": "TKT-021", "classification": "technical", "urgency": "high"},
+                {"ticket_id": "TKT-019", "classification": "billing",   "urgency": "high"},
+                {"ticket_id": "TKT-025", "classification": "account",   "urgency": "critical"},
+                {"ticket_id": "TKT-022", "classification": "billing",   "urgency": "medium"},
+                {"ticket_id": "TKT-024", "classification": "general",   "urgency": "medium"},
+            ],
+        },
+    },
+    # QUEUE-005 (harder): Multiple criticals — agent must choose the one with widest impact
+    # Hospital account suspension > SSL cert > DB corruption
+    # Correct: hospital (lives at risk > revenue > data)
+    {
+        "queue_id": "QUEUE-005",
+        "tickets": [
+            TICKETS[28],  # TKT-029: SSL cert expired (technical, critical)
+            TICKETS[16],  # TKT-017: hospital account suspended ← ESCALATE (account, critical)
+            TICKETS[15],  # TKT-016: DB corruption (technical, critical)
+            TICKETS[26],  # TKT-027: wrong currency (billing, medium)
+            TICKETS[27],  # TKT-028: SSO setup (general, low)
+        ],
+        "ground_truth": {
+            "escalate_ticket_id": "TKT-017",
+            "issue_keywords": ["hospital", "patient", "suspended", "medical", "clinical", "access"],
+            "classifications": [
+                {"ticket_id": "TKT-029", "classification": "technical", "urgency": "critical"},
+                {"ticket_id": "TKT-017", "classification": "account",   "urgency": "critical"},
+                {"ticket_id": "TKT-016", "classification": "technical", "urgency": "critical"},
+                {"ticket_id": "TKT-027", "classification": "billing",   "urgency": "medium"},
+                {"ticket_id": "TKT-028", "classification": "general",   "urgency": "low"},
+            ],
+        },
+    },
+    # QUEUE-006 (hardest): Webhook killing payments + data loss + board login
+    # Agent must prioritise: webhook (340 failed payments, ongoing) > board login (45 min) > project delete
+    {
+        "queue_id": "QUEUE-006",
+        "tickets": [
+            TICKETS[29],  # TKT-030: accidental project delete (account, critical)
+            TICKETS[22],  # TKT-023: webhook 502 → payments failing ← ESCALATE (technical, critical)
+            TICKETS[19],  # TKT-020: board login in 45 min (account, critical)
+            TICKETS[25],  # TKT-026: monthly report timeout (technical, high)
+            TICKETS[17],  # TKT-018: enterprise pricing (general, medium)
+        ],
+        "ground_truth": {
+            "escalate_ticket_id": "TKT-023",
+            "issue_keywords": ["webhook", "502", "payment", "transaction", "failed", "confirm", "customers"],
+            "classifications": [
+                {"ticket_id": "TKT-030", "classification": "account",   "urgency": "critical"},
+                {"ticket_id": "TKT-023", "classification": "technical", "urgency": "critical"},
+                {"ticket_id": "TKT-020", "classification": "account",   "urgency": "critical"},
+                {"ticket_id": "TKT-026", "classification": "technical", "urgency": "high"},
+                {"ticket_id": "TKT-018", "classification": "general",   "urgency": "medium"},
             ],
         },
     },
