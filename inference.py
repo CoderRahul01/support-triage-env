@@ -28,7 +28,10 @@ from environment import SupportTriageEnvironment
 from models import SupportAction
 
 # ── Configuration ─────────────────────────────────────────────────────────────
-API_KEY: str = os.getenv("HF_TOKEN") or os.getenv("API_KEY") or "hf_placeholder"
+HF_TOKEN: Optional[str] = os.getenv("HF_TOKEN")
+if HF_TOKEN is None:
+    raise ValueError("HF_TOKEN environment variable is required")
+API_KEY: str = HF_TOKEN
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
 MODEL_NAME: str = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
 BENCHMARK: str = "support_triage_env"
@@ -61,12 +64,11 @@ def log_step(
 
 
 def log_end(
-    success: bool, steps: int, score: float, rewards: List[float]
+    success: bool, steps: int, rewards: List[float]
 ) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
-        f"[END] success={str(success).lower()} steps={steps} "
-        f"score={score:.3f} rewards={rewards_str}",
+        f"[END] success={str(success).lower()} steps={steps} rewards={rewards_str}",
         flush=True,
     )
 
@@ -237,7 +239,6 @@ def run_task(
         log_end(
             success=success,
             steps=steps_taken,
-            score=score,
             rewards=rewards,
         )
 
