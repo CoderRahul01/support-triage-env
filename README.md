@@ -124,28 +124,30 @@ The response rubric checks: greeting presence (0.15), issue keyword acknowledgme
 | Method | Path | Description |
 |---|---|---|
 | POST | `/reset` | Start new episode. Body: `{"task": "classify_ticket", "seed": 42}` |
-| POST | `/step` | Take action. Body: SupportAction JSON |
-| GET | `/state` | Current episode state |
+| POST | `/step` | Take action. Body: `{"action": {<SupportAction fields>}}` |
+| GET | `/state` | Current episode state (simulation mode only) |
 | GET | `/health` | Health check |
+| GET | `/metadata` | Environment metadata |
+| GET | `/schema` | Action/observation schema |
 | GET | `/docs` | Swagger UI |
 
-### Example session
+> **Note:** The REST API creates a fresh environment per request (stateless). Multi-step task evaluation is done via `inference.py`, which manages state locally in Python.
+
+### Example — single reset call
 
 ```bash
-# Reset (start a classify_ticket episode)
+# Health check
+curl https://pengosword123-support-triage-env.hf.space/health
+
+# Reset (returns initial observation)
 curl -X POST http://localhost:8000/reset \
   -H "Content-Type: application/json" \
   -d '{"task": "classify_ticket", "seed": 42}'
 
-# Step 1 — submit classification
+# Step — action must be wrapped in {"action": {...}}
 curl -X POST http://localhost:8000/step \
   -H "Content-Type: application/json" \
-  -d '{"classification": "billing"}'
-
-# Step 2 — submit urgency
-curl -X POST http://localhost:8000/step \
-  -H "Content-Type: application/json" \
-  -d '{"urgency": "high"}'
+  -d '{"action": {"classification": "billing"}}'
 ```
 
 ---
@@ -153,7 +155,7 @@ curl -X POST http://localhost:8000/step \
 ## Local setup
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/support-triage-env
+git clone https://github.com/CoderRahul01/support-triage-env
 cd support-triage-env
 
 pip install -r requirements.txt
