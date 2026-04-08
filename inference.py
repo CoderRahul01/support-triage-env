@@ -29,7 +29,7 @@ from models import SupportAction
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1")
-MODEL_NAME: str = os.getenv("MODEL_NAME", "Qwen/Qwen2.5-72B-Instruct")
+MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
 HF_TOKEN: Optional[str] = os.getenv("HF_TOKEN")
 
 # Optional — only needed if using from_docker_image():
@@ -41,7 +41,7 @@ if not API_KEY:
 BENCHMARK: str = "support_triage_env"
 SEED: int = 42
 TEMPERATURE: float = 0.1
-MAX_TOKENS: int = 1024
+MAX_TOKENS: int = 2048
 SUCCESS_THRESHOLD: float = 0.40
 
 TASKS: List[str] = ["classify_ticket", "draft_response", "triage_queue", "resolve_ticket"]
