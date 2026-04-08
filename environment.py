@@ -314,9 +314,9 @@ class SupportTriageEnvironment(Environment):
         s.done = done
 
         # Clamp final score to strictly (0, 1) as required by the evaluation platform.
-        _EPS = 1e-9
+        # Use 0.001 so the value survives 3-decimal-place formatting in [END] logs.
         if done:
-            s.score = min(max(s.score, _EPS), 1.0 - _EPS)
+            s.score = min(max(s.score, 0.001), 0.999)
 
         # Keep class-level episode in sync after every step
         SupportTriageEnvironment._active_episode = s

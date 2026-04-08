@@ -236,7 +236,9 @@ def run_task(
                 break
 
         score = obs.score if obs is not None else sum(rewards)
-        score = min(max(score, 0.0), 1.0)
+        # Score must be strictly within (0, 1) — use 0.001 so it survives
+        # 3-decimal-place formatting in the [END] log line.
+        score = min(max(score, 0.001), 0.999)
         success = score >= SUCCESS_THRESHOLD
 
     except Exception as exc:
