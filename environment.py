@@ -672,11 +672,19 @@ class SupportTriageEnvironment(Environment):
             return -0.20
 
         # Greeting
-        if any(g in r for g in ["hello", "hi ", "hi,", "dear ", "thank you for", "thanks for"]):
+        if any(g in r for g in [
+            "hello", "hi ", "hi,", "dear ", "thank you for", "thanks for",
+            "greetings", "good morning", "good afternoon", "good day",
+            "thank you for reaching", "thank you for contacting",
+        ]):
             score += 0.10
 
         # Empathy / apology
-        if any(e in r for e in ["sorry", "apologis", "apologiz", "understand", "regret", "sincerely"]):
+        if any(e in r for e in [
+            "sorry", "apologis", "apologiz", "understand", "regret", "sincerely",
+            "empathise", "empathize", "appreciate your patience",
+            "frustrat", "inconvenien", "concern", "hear you",
+        ]):
             score += 0.10
 
         # Issue acknowledgment — ticket-specific keywords
@@ -694,6 +702,10 @@ class SupportTriageEnvironment(Environment):
             "restore", "reset", "update", "reverse", "correct", "credit",
             "engineer", "team", "follow up", "follow-up", "working on",
             "priority", "urgent", "immediately", "right away",
+            "address", "remediat", "rectif", "process", "arrange",
+            "sort out", "take care", "action", "proceed", "connect you",
+            "reach out", "transfer", "hand over", "raise", "submit",
+            "open a ticket", "create a case", "dedicated", "specialist",
         ]
         matched_res = sum(1 for w in resolution if w in r)
         if matched_res >= 2:
@@ -706,6 +718,9 @@ class SupportTriageEnvironment(Environment):
             "within 24", "within 48", "within 1 hour", "within an hour",
             "immediately", "right away", "as soon as", "by end of day",
             "today", "shortly", "asap", "promptly",
+            "within the hour", "within 2 hours", "within 4 hours",
+            "within one business day", "next business day",
+            "no later than", "by tomorrow", "urgently", "top priority",
         ]
         if any(t in r for t in timeline):
             score += 0.10
