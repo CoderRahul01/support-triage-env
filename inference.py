@@ -40,7 +40,7 @@ if not API_KEY:
     raise ValueError("HF_TOKEN environment variable is required")
 BENCHMARK: str = "support_triage_env"
 SEED: int = 42
-TEMPERATURE: float = 0.1
+TEMPERATURE: float = 0.0
 MAX_TOKENS: int = 2048
 SUCCESS_THRESHOLD: float = 0.40
 
@@ -167,17 +167,18 @@ TASK_SYSTEM_PROMPTS: dict = {
         "  1. Greets the customer by name (Hello / Hi / Dear [name])\n"
         "  2. Shows empathy (sorry / apologise / understand / sincerely / frustrating)\n"
         "  3. Acknowledges the EXACT issue from clarification exchange using their own words\n"
-        "  4. Provides specific next steps (resolve / investigate / escalate / restore / refund)\n"
-        "  5. Commits to a timeline (within 24 hours / immediately / right away / asap)\n"
+        "  4. Provides specific next steps (resolve / investigate / escalate / restore / refund / reverse)\n"
+        "  5. MANDATORY timeline — you MUST include one: 'within 24 hours' / 'within 48 hours' / "
+        "'immediately' / 'right away' / 'by end of day' / 'as soon as possible'\n"
         "  6. Minimum 150 characters — be thorough and personalised\n\n"
-        "EXAMPLE of a high-quality resolution response:\n"
-        "\"Dear Thomas, thank you for clarifying this. I sincerely apologise for the "
-        "disruption caused by the failed payment locking your account. I completely "
-        "understand how frustrating this must be when you rely on the platform daily. "
-        "I am processing the account restoration right away and investigating why the "
-        "card update did not automatically re-activate your subscription. "
-        "Your account will be fully restored within the next hour and I will send you "
-        "confirmation by email. Please do not hesitate to contact us if you need anything further.\"\n\n"
+        "EXAMPLE — billing duplicate charge:\n"
+        "\"Dear Hiroshi, thank you for clarifying this. I sincerely apologise for the "
+        "frustration caused by the duplicate charge on your account. I completely understand "
+        "how concerning it is to see an unexpected transaction, especially when you have only "
+        "one active subscription. I am investigating this right away and will process a full "
+        "refund for the duplicate payment within 24 hours. You will receive email confirmation "
+        "once the refund has been initiated. Please do not hesitate to reach out if you need "
+        "anything further.\"\n\n"
         "Output ONLY a valid JSON object. No markdown, no backticks, no explanation."
     ),
 }
