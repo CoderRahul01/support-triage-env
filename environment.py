@@ -312,6 +312,12 @@ class SupportTriageEnvironment(Environment):
         s.step += 1
         done = s.step >= s.max_steps
         s.done = done
+
+        # Clamp final score to strictly (0, 1) as required by the evaluation platform.
+        _EPS = 1e-9
+        if done:
+            s.score = min(max(s.score, _EPS), 1.0 - _EPS)
+
         # Keep class-level episode in sync after every step
         SupportTriageEnvironment._active_episode = s
 
