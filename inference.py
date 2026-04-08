@@ -235,8 +235,9 @@ def run_task(
             if done:
                 break
 
+        _EPS = 1e-9
         score = obs.score if obs is not None else sum(rewards)
-        score = min(max(score, 0.0), 1.0)
+        score = min(max(score, _EPS), 1.0 - _EPS)
         success = score >= SUCCESS_THRESHOLD
 
     except Exception as exc:
