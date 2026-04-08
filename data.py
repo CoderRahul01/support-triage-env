@@ -503,6 +503,178 @@ TICKETS: List[Dict[str, Any]] = [
             "issue_keywords": ["deleted", "project", "recover", "backup", "lost", "data", "restore"],
         },
     },
+
+    # ── Additional tickets — edge cases and cross-category ambiguity ──────────
+    {
+        "ticket_id": "TKT-031",
+        "subject": "Refund not received after 14 days",
+        "content": (
+            "I was issued a refund confirmation on March 20th but today is April 3rd "
+            "and the money has not appeared in my account. "
+            "I have the refund reference number RF-20240320-7823. "
+            "My bank says they have not received anything."
+        ),
+        "customer_name": "Ananya Krishnan",
+        "customer_email": "ananya@personal.in",
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "high",
+            "issue_keywords": ["refund", "payment", "received", "bank", "reference", "pending"],
+        },
+    },
+    {
+        "ticket_id": "TKT-032",
+        "subject": "Mobile app login loop — cannot access account",
+        "content": (
+            "The mobile app keeps redirecting me to the login screen even after I enter "
+            "the correct credentials. It shows 'Authentication successful' then immediately "
+            "returns me to login. I cleared the cache and reinstalled — same issue. "
+            "I can log in on desktop fine."
+        ),
+        "customer_name": "Diego Herrera",
+        "customer_email": "d.herrera@freelance.mx",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "medium",
+            "issue_keywords": ["login", "app", "mobile", "redirect", "authentication", "loop", "cache"],
+        },
+    },
+    {
+        "ticket_id": "TKT-033",
+        "subject": "Team member cannot accept invite — onboarding blocked",
+        "content": (
+            "I sent an invite to our new engineer three days ago. "
+            "She keeps getting 'Invitation expired or invalid' when clicking the link. "
+            "I have resent it twice. We cannot start her onboarding until she is in the system. "
+            "Her start date was yesterday."
+        ),
+        "customer_name": "Rebecca Thompson",
+        "customer_email": "r.thompson@techstartup.io",
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "high",
+            "issue_keywords": ["invite", "invitation", "expired", "onboarding", "access", "team", "link"],
+        },
+    },
+    {
+        "ticket_id": "TKT-034",
+        "subject": "Annual plan auto-renewed without consent",
+        "content": (
+            "My annual subscription auto-renewed for $1,188 yesterday without any reminder email. "
+            "I wanted to evaluate alternatives before renewing. "
+            "I did not see any 30-day notice. "
+            "I want this cancelled and fully refunded — I have not used the service since renewal."
+        ),
+        "customer_name": "Henrik Bergstrom",
+        "customer_email": "h.bergstrom@consulting.se",
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "high",
+            "issue_keywords": ["auto-renew", "annual", "refund", "cancel", "notice", "charged", "subscription"],
+        },
+    },
+    {
+        "ticket_id": "TKT-035",
+        "subject": "Data export contains corrupted/missing rows",
+        "content": (
+            "I exported our full dataset last night (approx 80,000 rows) and when I opened "
+            "the CSV about 12,000 rows are either missing or have garbled characters in the "
+            "description fields. This is data from the last 6 months and we need it for "
+            "our quarterly business review tomorrow."
+        ),
+        "customer_name": "Mei-Ling Zhao",
+        "customer_email": "ml.zhao@analytics.cn",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "critical",
+            "issue_keywords": ["export", "data", "corrupted", "missing", "rows", "csv", "quarterly"],
+        },
+    },
+    {
+        "ticket_id": "TKT-036",
+        "subject": "Wrong user promoted to admin — security concern",
+        "content": (
+            "A junior team member was accidentally given admin privileges yesterday. "
+            "They can now see billing information, all user data, and API keys for our "
+            "entire organisation. We need their permissions downgraded immediately and "
+            "an audit of any changes they may have made."
+        ),
+        "customer_name": "Aisha Okafor",
+        "customer_email": "a.okafor@fintech.ng",
+        "ground_truth": {
+            "classification": "account",
+            "urgency": "critical",
+            "issue_keywords": ["admin", "permissions", "security", "access", "audit", "privileges", "organisation"],
+        },
+    },
+    {
+        "ticket_id": "TKT-037",
+        "subject": "Can I get a non-profit discount?",
+        "content": (
+            "We are a registered non-profit organisation working on climate education. "
+            "I noticed some SaaS tools offer non-profit pricing. "
+            "Do you have a non-profit discount programme? "
+            "We currently have 8 users but could grow to 25 if pricing works out."
+        ),
+        "customer_name": "Gabriel Moreau",
+        "customer_email": "g.moreau@climatedu.fr",
+        "ground_truth": {
+            "classification": "general",
+            "urgency": "low",
+            "issue_keywords": ["non-profit", "discount", "pricing", "programme", "users", "organisation"],
+        },
+    },
+    {
+        "ticket_id": "TKT-038",
+        "subject": "Real-time notifications stopped working across all devices",
+        "content": (
+            "Push notifications and in-app alerts stopped working completely 36 hours ago. "
+            "Our entire team of 45 people across 3 countries is affected. "
+            "We rely on these for incident alerts in our SRE workflow — "
+            "we missed two production incidents because of this."
+        ),
+        "customer_name": "Preethi Sundar",
+        "customer_email": "p.sundar@sre.in",
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "critical",
+            "issue_keywords": ["notifications", "alerts", "push", "workflow", "incidents", "team", "production"],
+        },
+    },
+    {
+        "ticket_id": "TKT-039",
+        "subject": "How do I set up role-based access control?",
+        "content": (
+            "We are growing our team and need to restrict what different user roles can see. "
+            "For example, our finance team should only see billing, and engineers should "
+            "not see HR data. Is there a way to configure granular permissions in the platform? "
+            "We are on the Business plan."
+        ),
+        "customer_name": "Lars Andersen",
+        "customer_email": "l.andersen@scaleup.dk",
+        "ground_truth": {
+            "classification": "general",
+            "urgency": "low",
+            "issue_keywords": ["rbac", "role", "permissions", "access control", "restrict", "granular", "users"],
+        },
+    },
+    {
+        "ticket_id": "TKT-040",
+        "subject": "Account charged for users we removed 3 months ago",
+        "content": (
+            "We downsized our team in January and removed 6 users from the platform. "
+            "However we are still being charged for 6 extra seats every month. "
+            "That is $360 in overcharges over 3 months. "
+            "I need these seats removed from billing retroactively and a credit applied."
+        ),
+        "customer_name": "Fatou Diarra",
+        "customer_email": "f.diarra@agency.sn",
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "medium",
+            "issue_keywords": ["charged", "seats", "removed", "users", "overcharged", "credit", "billing"],
+        },
+    },
 ]
 
 
@@ -641,6 +813,52 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
                 {"ticket_id": "TKT-020", "classification": "account",   "urgency": "critical"},
                 {"ticket_id": "TKT-026", "classification": "technical", "urgency": "high"},
                 {"ticket_id": "TKT-018", "classification": "general",   "urgency": "medium"},
+            ],
+        },
+    },
+    # QUEUE-007: New tickets — wrong admin + missed SRE alerts + refund dispute
+    # Agent must reason: wrong admin (security+data exposure, ongoing) > missed alerts (production risk)
+    {
+        "queue_id": "QUEUE-007",
+        "tickets": [
+            TICKETS[35],  # TKT-036: wrong admin privileges ← ESCALATE (account, critical)
+            TICKETS[37],  # TKT-038: notifications broken / missed incidents (technical, critical)
+            TICKETS[30],  # TKT-031: refund not received 14 days (billing, high)
+            TICKETS[33],  # TKT-034: auto-renewal refund request (billing, high)
+            TICKETS[36],  # TKT-037: non-profit discount enquiry (general, low)
+        ],
+        "ground_truth": {
+            "escalate_ticket_id": "TKT-036",
+            "issue_keywords": ["admin", "permissions", "security", "access", "audit", "privileges", "organisation"],
+            "classifications": [
+                {"ticket_id": "TKT-036", "classification": "account",   "urgency": "critical"},
+                {"ticket_id": "TKT-038", "classification": "technical", "urgency": "critical"},
+                {"ticket_id": "TKT-031", "classification": "billing",   "urgency": "high"},
+                {"ticket_id": "TKT-034", "classification": "billing",   "urgency": "high"},
+                {"ticket_id": "TKT-037", "classification": "general",   "urgency": "low"},
+            ],
+        },
+    },
+    # QUEUE-008: Mix of new and original — corrupted export (critical) vs routine
+    # Agent must reason: corrupted data export for QBR tomorrow > onboarding blocker > billing dispute
+    {
+        "queue_id": "QUEUE-008",
+        "tickets": [
+            TICKETS[34],  # TKT-035: corrupted data export for QBR ← ESCALATE (technical, critical)
+            TICKETS[32],  # TKT-033: team invite failing / onboarding (account, high)
+            TICKETS[39],  # TKT-040: charged for removed users (billing, medium)
+            TICKETS[38],  # TKT-039: RBAC setup question (general, low)
+            TICKETS[31],  # TKT-032: mobile app login loop (technical, medium)
+        ],
+        "ground_truth": {
+            "escalate_ticket_id": "TKT-035",
+            "issue_keywords": ["export", "data", "corrupted", "missing", "rows", "csv", "quarterly"],
+            "classifications": [
+                {"ticket_id": "TKT-035", "classification": "technical", "urgency": "critical"},
+                {"ticket_id": "TKT-033", "classification": "account",   "urgency": "high"},
+                {"ticket_id": "TKT-040", "classification": "billing",   "urgency": "medium"},
+                {"ticket_id": "TKT-039", "classification": "general",   "urgency": "low"},
+                {"ticket_id": "TKT-032", "classification": "technical", "urgency": "medium"},
             ],
         },
     },
@@ -845,6 +1063,73 @@ AMBIGUOUS_TICKETS = [
             "classification": "technical",
             "urgency": "high",
             "issue_keywords": ["cors", "widget", "browser", "error", "deployment", "header", "revenue", "customers"],
+        },
+    },
+    {
+        "ticket_id": "AMB-007",
+        "subject": "Something is not right with our account",
+        "partial_content": (
+            "We have noticed something is not right with our account over the past week. "
+            "Our numbers do not add up and there are discrepancies we cannot explain. "
+            "We need someone to look into this urgently."
+        ),
+        "full_content": (
+            "We have noticed something is not right with our account over the past week. "
+            "Our numbers do not add up and there are discrepancies we cannot explain. "
+            "After reviewing our billing history, we discovered we have been charged "
+            "for 25 seats every month, but we only have 18 active users. "
+            "We have been overpaying for at least 4 months — approximately $840 in overcharges. "
+            "We need the extra seats removed and a full retroactive credit applied."
+        ),
+        "customer_name": "Marcus Obi",
+        "customer_email": "m.obi@consultancy.ng",
+        "customer_reply": (
+            "We checked our billing and we are paying for 25 seats but only have 18 active users. "
+            "We have been overcharged for 4 months — about $840 extra. "
+            "We need the seats corrected and a retroactive credit for the overpayment."
+        ),
+        "clarification_keywords": [
+            "billing", "charge", "invoice", "payment", "seats", "users", "subscription",
+            "plan", "cost", "amount", "overcharged", "credit", "refund",
+        ],
+        "ground_truth": {
+            "classification": "billing",
+            "urgency": "medium",
+            "issue_keywords": ["seats", "overcharged", "billing", "credit", "users", "retroactive", "subscription"],
+        },
+    },
+    {
+        "ticket_id": "AMB-008",
+        "subject": "We are having serious problems and need help immediately",
+        "partial_content": (
+            "Our whole team has been having serious problems for the past two days. "
+            "It is affecting our ability to work and we are very frustrated. "
+            "We need this resolved immediately — it is costing us time and money."
+        ),
+        "full_content": (
+            "Our whole team has been having serious problems for the past two days. "
+            "It is affecting our ability to work and we are very frustrated. "
+            "After investigation, our DevOps lead found that your platform's API started "
+            "returning 503 Service Unavailable errors intermittently. "
+            "About 30% of our API calls are failing. "
+            "We have traced it to the /reports endpoint specifically. "
+            "Our automated pipelines are breaking and we are missing SLA commitments to our clients."
+        ),
+        "customer_name": "Chiara Bianchi",
+        "customer_email": "c.bianchi@dataplatform.it",
+        "customer_reply": (
+            "Our DevOps lead confirmed the /reports API endpoint is returning 503 errors intermittently — "
+            "about 30% failure rate. This has been going on 2 days and our automated pipelines are broken. "
+            "We are missing SLA commitments to clients because of this."
+        ),
+        "clarification_keywords": [
+            "api", "error", "endpoint", "technical", "code", "developer", "devops",
+            "integration", "service", "503", "request", "failure", "pipeline",
+        ],
+        "ground_truth": {
+            "classification": "technical",
+            "urgency": "critical",
+            "issue_keywords": ["api", "503", "endpoint", "pipeline", "sla", "failure", "reports", "intermittent"],
         },
     },
 ]
