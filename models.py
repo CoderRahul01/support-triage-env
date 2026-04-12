@@ -1,4 +1,4 @@
-"""Pydantic models for the Support Triage Environment."""
+"""Pydantic models for the Enterprise Support Operations Benchmark (ESOB)."""
 from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
@@ -20,7 +20,7 @@ except ImportError:
 
 class SupportAction(Action):
     """
-    Action submitted by the agent in the Support Triage environment.
+    Action submitted by the agent in the Enterprise Support Operations Benchmark.
 
     Only fill the fields relevant to the current task step.
     The task_description in the Observation tells you exactly what to submit.
@@ -32,13 +32,13 @@ class SupportAction(Action):
         description="Category: 'billing' | 'technical' | 'account' | 'general'",
     )
 
-    # Used in: classify_ticket step 2 | draft_response step 2 | resolve_ticket step 2
+    # Used in: classify_ticket step 2 | draft_response step 2
     urgency: Optional[str] = Field(
         default=None,
         description="Urgency: 'low' | 'medium' | 'high' | 'critical'",
     )
 
-    # Used in: draft_response step 3 | resolve_ticket step 3
+    # Used in: draft_response step 3
     response_draft: Optional[str] = Field(
         default=None,
         description="Full professional reply to send to the customer",
@@ -47,7 +47,16 @@ class SupportAction(Action):
     # Used in: triage_queue step 1
     ticket_classifications: Optional[List[Dict[str, str]]] = Field(
         default=None,
-        description="[{ticket_id, classification, urgency}, ...] for ALL tickets",
+        description="[{ticket_id, classification, urgency}, ...] for ALL tickets in the queue",
+    )
+
+    # Used in: triage_queue step 1 — SLA-aware processing order (most urgent first)
+    processing_order: Optional[List[str]] = Field(
+        default=None,
+        description=(
+            "Ordered list of ticket_ids representing the proposed processing priority "
+            "(index 0 = handle first). Ranked by SLA deadline_minutes to minimise total SLA breaches."
+        ),
     )
 
     # Used in: triage_queue step 2
@@ -63,7 +72,26 @@ class SupportAction(Action):
     # Used in: resolve_ticket step 1
     clarification_request: Optional[str] = Field(
         default=None,
-        description="A specific clarifying question to ask the customer (resolve_ticket task only)",
+        description="A specific clarifying question to ask the customer (resolve_ticket step 1)",
+    )
+
+    # Used in: resolve_ticket step 2 — resolution plan submitted before customer reacts
+    resolution_plan: Optional[str] = Field(
+        default=None,
+        description=(
+            "Resolution plan for the customer's issue: state the specific action you will take, "
+            "include a concrete timeline commitment, and express empathy. "
+            "Used in resolve_ticket step 2."
+        ),
+    )
+
+    # Used in: resolve_ticket step 3 — final closure after customer reaction is revealed
+    closure_response: Optional[str] = Field(
+        default=None,
+        description=(
+            "Final closure response acknowledging the customer's reaction to your resolution plan. "
+            "Adapt tone based on whether the customer is satisfied or escalating."
+        ),
     )
 
 
@@ -75,6 +103,11 @@ class TicketInfo(BaseModel):
     content: str
     customer_name: str
     customer_email: str
+    # SLA deadline in minutes from now — populated for triage_queue tasks
+    deadline_minutes: Optional[int] = Field(
+        default=None,
+        description="SLA deadline: minutes from now before this ticket breaches service level",
+    )
 
 
 class SupportObservation(Observation):
@@ -92,6 +125,19 @@ class SupportObservation(Observation):
     revealed_info: Optional[str] = Field(
         default=None,
         description="Extra context revealed after a clarification request (resolve_ticket task)",
+    )
+    # resolve_ticket: customer reply revealed after step 1
+    customer_reply: Optional[str] = Field(
+        default=None,
+        description="Customer's reply to the agent's clarifying question (resolve_ticket step 2+)",
+    )
+    # resolve_ticket: customer reaction revealed after step 2 (resolution plan)
+    customer_reaction: Optional[str] = Field(
+        default=None,
+        description=(
+            "Customer's reaction to the agent's resolution plan — either satisfied or escalating. "
+            "Revealed at step 3 of resolve_ticket. Agent must acknowledge this in closure_response."
+        ),
     )
     metadata: Dict[str, Any] = {}
 
@@ -114,3 +160,10 @@ class SupportState(State):
     customer_reply: Optional[str] = None
     clarification_keywords: List[str] = []
     clarification_done: bool = False
+    # resolve_ticket negotiation fields (new)
+    required_resolution_keywords: List[str] = []
+    satisfied_reply: Optional[str] = None
+    escalating_reply: Optional[str] = None
+    customer_reaction: Optional[str] = None        # generated after step 1, shown in step 2 obs
+    customer_reaction_type: Optional[str] = None   # "satisfied" | "escalating"
+    clarification_field: Optional[str] = None

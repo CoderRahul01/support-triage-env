@@ -1,9 +1,10 @@
 """
 Synthetic support ticket data with deterministic ground-truth labels.
-30 tickets covering real-world scenarios across 4 categories,
-including ambiguous cases that challenge frontier models.
-6 pre-built queues used for the triage_queue task.
-6 ambiguous tickets used for the resolve_ticket multi-turn task.
+40 tickets covering real-world scenarios across 4 categories, including
+ambiguous cases that challenge frontier models.
+8 pre-built queues (each with SLA deadline_minutes + optimal_processing_order)
+used for the triage_queue task.
+8 ambiguous tickets used for the resolve_ticket multi-turn negotiation task.
 """
 from typing import Any, Dict, List
 
@@ -678,7 +679,10 @@ TICKETS: List[Dict[str, Any]] = [
 ]
 
 
-# ── Pre-built queues for the triage_queue task ─────────────────────────────────
+# ── Pre-built queues for the triage_queue task ────────────────────────────────
+# Each queue includes deadline_minutes per ticket (SLA breach threshold) and
+# an optimal_processing_order computed as: sort by deadline_minutes asc,
+# ties broken by urgency (critical < high < medium < low = shorter SLA first).
 TICKET_QUEUES: List[Dict[str, Any]] = [
     # QUEUE-001: One obvious critical (account), rest routine
     {
@@ -690,8 +694,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[8],   # TKT-009: dark mode (general, low)
             TICKETS[12],  # TKT-013: slow dashboard (technical, medium)
         ],
+        "deadline_minutes": {
+            "TKT-002": 90,
+            "TKT-005": 600,
+            "TKT-004": 30,
+            "TKT-009": 720,
+            "TKT-013": 240,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-004",
+            "optimal_processing_order": ["TKT-004", "TKT-002", "TKT-013", "TKT-005", "TKT-009"],
             "issue_keywords": ["password", "reset", "access", "presentation", "urgent", "account"],
             "classifications": [
                 {"ticket_id": "TKT-002", "classification": "technical", "urgency": "high"},
@@ -712,8 +724,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[11],  # TKT-012: add users (billing, medium)
             TICKETS[2],   # TKT-003: export question (general, low)
         ],
+        "deadline_minutes": {
+            "TKT-006": 20,
+            "TKT-007": 720,
+            "TKT-010": 120,
+            "TKT-012": 300,
+            "TKT-003": 480,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-006",
+            "optimal_processing_order": ["TKT-006", "TKT-010", "TKT-012", "TKT-003", "TKT-007"],
             "issue_keywords": ["api", "403", "forbidden", "launch", "production", "error"],
             "classifications": [
                 {"ticket_id": "TKT-006", "classification": "technical", "urgency": "critical"},
@@ -734,8 +754,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[14],  # TKT-015: emails in spam (technical, high)
             TICKETS[0],   # TKT-001: wrong charge (billing, high)
         ],
+        "deadline_minutes": {
+            "TKT-011": 25,
+            "TKT-008": 90,
+            "TKT-014": 600,
+            "TKT-015": 75,
+            "TKT-001": 100,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-011",
+            "optimal_processing_order": ["TKT-011", "TKT-015", "TKT-008", "TKT-001", "TKT-014"],
             "issue_keywords": ["cancel", "charge", "refund", "unauthorized", "subscription", "dispute"],
             "classifications": [
                 {"ticket_id": "TKT-011", "classification": "billing",   "urgency": "critical"},
@@ -747,7 +775,6 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
         },
     },
     # QUEUE-004 (harder): Two "high" tickets + one critical security breach
-    # Agent must reason: security breach > revenue loss > data sync
     {
         "queue_id": "QUEUE-004",
         "tickets": [
@@ -757,8 +784,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[21],  # TKT-022: VAT invoice audit (billing, medium)
             TICKETS[23],  # TKT-024: workspace migration (general, medium)
         ],
+        "deadline_minutes": {
+            "TKT-021": 110,
+            "TKT-019": 80,
+            "TKT-025": 15,
+            "TKT-022": 360,
+            "TKT-024": 300,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-025",
+            "optimal_processing_order": ["TKT-025", "TKT-019", "TKT-021", "TKT-024", "TKT-022"],
             "issue_keywords": ["suspicious", "login", "breach", "ip", "security", "compromised"],
             "classifications": [
                 {"ticket_id": "TKT-021", "classification": "technical", "urgency": "high"},
@@ -769,9 +804,7 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             ],
         },
     },
-    # QUEUE-005 (harder): Multiple criticals — agent must choose the one with widest impact
-    # Hospital account suspension > SSL cert > DB corruption
-    # Correct: hospital (lives at risk > revenue > data)
+    # QUEUE-005 (harder): Multiple criticals — hospital > SSL > DB corruption
     {
         "queue_id": "QUEUE-005",
         "tickets": [
@@ -781,8 +814,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[26],  # TKT-027: wrong currency (billing, medium)
             TICKETS[27],  # TKT-028: SSO setup (general, low)
         ],
+        "deadline_minutes": {
+            "TKT-029": 20,
+            "TKT-017": 10,
+            "TKT-016": 18,
+            "TKT-027": 240,
+            "TKT-028": 600,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-017",
+            "optimal_processing_order": ["TKT-017", "TKT-016", "TKT-029", "TKT-027", "TKT-028"],
             "issue_keywords": ["hospital", "patient", "suspended", "medical", "clinical", "access"],
             "classifications": [
                 {"ticket_id": "TKT-029", "classification": "technical", "urgency": "critical"},
@@ -794,7 +835,6 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
         },
     },
     # QUEUE-006 (hardest): Webhook killing payments + data loss + board login
-    # Agent must prioritise: webhook (340 failed payments, ongoing) > board login (45 min) > project delete
     {
         "queue_id": "QUEUE-006",
         "tickets": [
@@ -804,8 +844,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[25],  # TKT-026: monthly report timeout (technical, high)
             TICKETS[17],  # TKT-018: enterprise pricing (general, medium)
         ],
+        "deadline_minutes": {
+            "TKT-030": 25,
+            "TKT-023": 15,
+            "TKT-020": 30,
+            "TKT-026": 120,
+            "TKT-018": 480,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-023",
+            "optimal_processing_order": ["TKT-023", "TKT-030", "TKT-020", "TKT-026", "TKT-018"],
             "issue_keywords": ["webhook", "502", "payment", "transaction", "failed", "confirm", "customers"],
             "classifications": [
                 {"ticket_id": "TKT-030", "classification": "account",   "urgency": "critical"},
@@ -816,8 +864,7 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             ],
         },
     },
-    # QUEUE-007: New tickets — wrong admin + missed SRE alerts + refund dispute
-    # Agent must reason: wrong admin (security+data exposure, ongoing) > missed alerts (production risk)
+    # QUEUE-007: Wrong admin + missed SRE alerts + refund disputes
     {
         "queue_id": "QUEUE-007",
         "tickets": [
@@ -827,8 +874,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[33],  # TKT-034: auto-renewal refund request (billing, high)
             TICKETS[36],  # TKT-037: non-profit discount enquiry (general, low)
         ],
+        "deadline_minutes": {
+            "TKT-036": 20,
+            "TKT-038": 25,
+            "TKT-031": 120,
+            "TKT-034": 90,
+            "TKT-037": 720,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-036",
+            "optimal_processing_order": ["TKT-036", "TKT-038", "TKT-034", "TKT-031", "TKT-037"],
             "issue_keywords": ["admin", "permissions", "security", "access", "audit", "privileges", "organisation"],
             "classifications": [
                 {"ticket_id": "TKT-036", "classification": "account",   "urgency": "critical"},
@@ -839,8 +894,7 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             ],
         },
     },
-    # QUEUE-008: Mix of new and original — corrupted export (critical) vs routine
-    # Agent must reason: corrupted data export for QBR tomorrow > onboarding blocker > billing dispute
+    # QUEUE-008: Corrupted export + onboarding + billing dispute
     {
         "queue_id": "QUEUE-008",
         "tickets": [
@@ -850,8 +904,16 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
             TICKETS[38],  # TKT-039: RBAC setup question (general, low)
             TICKETS[31],  # TKT-032: mobile app login loop (technical, medium)
         ],
+        "deadline_minutes": {
+            "TKT-035": 20,
+            "TKT-033": 100,
+            "TKT-040": 360,
+            "TKT-039": 600,
+            "TKT-032": 180,
+        },
         "ground_truth": {
             "escalate_ticket_id": "TKT-035",
+            "optimal_processing_order": ["TKT-035", "TKT-033", "TKT-032", "TKT-040", "TKT-039"],
             "issue_keywords": ["export", "data", "corrupted", "missing", "rows", "csv", "quarterly"],
             "classifications": [
                 {"ticket_id": "TKT-035", "classification": "technical", "urgency": "critical"},
@@ -865,10 +927,17 @@ TICKET_QUEUES: List[Dict[str, Any]] = [
 ]
 
 
-# ── Ambiguous tickets for the resolve_ticket multi-turn task ──────────────────
-# Each ticket has partial_content (shown initially) and full_content + customer_reply
-# (revealed after the agent asks a relevant clarifying question).
-AMBIGUOUS_TICKETS = [
+# ── Ambiguous tickets for the resolve_ticket multi-turn negotiation task ───────
+# Each ticket has:
+#   partial_content      — shown initially (vague, agent must ask to get details)
+#   full_content         — shown after any clarification attempt
+#   customer_reply       — deterministic reply template (revealed after step 0)
+#   clarification_field  — the root ambiguity the agent should target
+#   clarification_keywords — keywords a targeted question would contain
+#   required_resolution_keywords — keywords the resolution_plan must contain
+#   satisfied_reply      — customer reaction when plan is adequate (>= half keywords matched)
+#   escalating_reply     — customer reaction when plan is inadequate
+AMBIGUOUS_TICKETS: List[Dict[str, Any]] = [
     {
         "ticket_id": "AMB-001",
         "subject": "Having trouble accessing my account",
@@ -886,14 +955,25 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Thomas Anderson",
         "customer_email": "t.anderson@consulting.io",
+        "clarification_field": "payment_status",
+        "clarification_keywords": [
+            "payment", "billing", "charge", "invoice", "subscription", "plan", "paid", "card", "fee",
+        ],
         "customer_reply": (
             "I just checked — my payment from last month failed because my card expired. "
             "I updated the card details but I still cannot log in. "
             "Is my account locked because of the missed payment?"
         ),
-        "clarification_keywords": [
-            "payment", "billing", "charge", "invoice", "subscription", "plan", "paid", "card", "fee",
-        ],
+        "required_resolution_keywords": ["payment", "card", "access", "restore", "billing"],
+        "satisfied_reply": (
+            "Thank you for looking into this. That makes sense — once the payment issue is "
+            "resolved I should be able to get back in. I appreciate your help and quick response."
+        ),
+        "escalating_reply": (
+            "I already updated my card and the payment should have gone through. "
+            "Why is my account STILL locked? I have been waiting 2 days. "
+            "This is completely unacceptable — I need this fixed immediately or I am cancelling."
+        ),
         "ground_truth": {
             "classification": "billing",
             "urgency": "high",
@@ -917,15 +997,27 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Amara Diallo",
         "customer_email": "a.diallo@finance.sn",
+        "clarification_field": "security_incident",
+        "clarification_keywords": [
+            "security", "unauthorised", "unauthorized", "hacked", "breach", "login",
+            "password", "changed", "suspicious", "access", "strange",
+        ],
         "customer_reply": (
             "There are emails sent from my account that I never wrote. "
             "My password was also changed yesterday without my doing it. "
             "I think my account has been compromised by an unauthorised party."
         ),
-        "clarification_keywords": [
-            "security", "unauthorised", "unauthorized", "hacked", "breach", "login",
-            "password", "changed", "suspicious", "access", "strange",
-        ],
+        "required_resolution_keywords": ["security", "lock", "password", "access", "investigate", "audit"],
+        "satisfied_reply": (
+            "Thank you for taking this seriously. I am relieved to hear you are locking the "
+            "account and investigating immediately. Please let me know what data was accessed "
+            "and what steps I should take to secure my account going forward."
+        ),
+        "escalating_reply": (
+            "This is completely unacceptable. My account has been hacked and you are not doing "
+            "enough. I need you to lock it RIGHT NOW and tell me exactly what data was accessed. "
+            "I am considering legal action if my data has been exposed."
+        ),
         "ground_truth": {
             "classification": "account",
             "urgency": "critical",
@@ -950,15 +1042,28 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Kwame Asante",
         "customer_email": "k.asante@agency.gh",
+        "clarification_field": "technical_error",
+        "clarification_keywords": [
+            "api", "rate", "limit", "error", "code", "technical", "developer",
+            "integration", "requests", "429", "endpoint",
+        ],
         "customer_reply": (
             "Our developer checked the API responses and we are getting 429 Too Many Requests errors. "
             "We think we have exceeded our plan's API rate limit. "
             "We have a major client deliverable due tomorrow and need this resolved urgently."
         ),
-        "clarification_keywords": [
-            "api", "rate", "limit", "error", "code", "technical", "developer",
-            "integration", "requests", "429", "endpoint",
-        ],
+        "required_resolution_keywords": ["api", "rate", "limit", "upgrade", "resolve", "quota"],
+        "satisfied_reply": (
+            "Thank you — yes it is the rate limit issue. If you can temporarily increase our quota "
+            "or help us upgrade our plan, that would save us. Our deliverable is due tomorrow and "
+            "this response gives us something to work with. We appreciate the urgency."
+        ),
+        "escalating_reply": (
+            "You are just telling me to wait or upgrade? We have a client deliverable due TOMORROW "
+            "and your platform is throttling us with no warning. This is not good enough. "
+            "I need a real solution — either a temporary quota increase or an emergency bypass — "
+            "RIGHT NOW. Otherwise we are in breach of contract with our client."
+        ),
         "ground_truth": {
             "classification": "technical",
             "urgency": "critical",
@@ -983,15 +1088,28 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Ingrid Larsson",
         "customer_email": "i.larsson@nordic.se",
+        "clarification_field": "access_control",
+        "clarification_keywords": [
+            "user", "admin", "access", "permission", "employee", "account",
+            "security", "unauthorised", "unauthorized", "role", "removed", "revoke",
+        ],
         "customer_reply": (
             "A former employee who was terminated 2 weeks ago still had admin access. "
             "We believe he made these unauthorised changes after being let go. "
             "We need all activity audited and his access removed immediately."
         ),
-        "clarification_keywords": [
-            "user", "admin", "access", "permission", "employee", "account",
-            "security", "unauthorised", "unauthorized", "role", "removed", "revoke",
-        ],
+        "required_resolution_keywords": ["revoke", "audit", "access", "security", "permissions", "investigate"],
+        "satisfied_reply": (
+            "Thank you for responding quickly. Please revoke his access immediately and conduct "
+            "a full audit of all recent changes. We need a complete report of everything he accessed "
+            "or modified so we can assess the damage and report to our legal team if necessary."
+        ),
+        "escalating_reply": (
+            "This is a serious security breach! A terminated employee has had admin access for "
+            "2 WEEKS and made unauthorised changes. Why has this not already been escalated to "
+            "your security team? I need immediate action — revoke access NOW and I want your "
+            "Head of Security on a call with us within the hour."
+        ),
         "ground_truth": {
             "classification": "account",
             "urgency": "critical",
@@ -1016,15 +1134,28 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Hiroshi Yamamoto",
         "customer_email": "h.yamamoto@corp.jp",
+        "clarification_field": "payment_amount",
+        "clarification_keywords": [
+            "charge", "charged", "payment", "duplicate", "invoice", "amount",
+            "billing", "subscription", "refund", "transaction", "bank",
+        ],
         "customer_reply": (
             "I was charged twice this month — once on the 1st for $199 and again on the 3rd for $199. "
             "I only have one subscription. "
             "It looks like your system charged me twice and I need the duplicate $199 refunded."
         ),
-        "clarification_keywords": [
-            "charge", "charged", "payment", "duplicate", "invoice", "amount",
-            "billing", "subscription", "refund", "transaction", "bank",
-        ],
+        "required_resolution_keywords": ["refund", "duplicate", "payment", "charge", "reverse", "credit"],
+        "satisfied_reply": (
+            "Thank you for confirming this. I am glad you can see the duplicate charge in your system. "
+            "Please process the refund as quickly as possible. A $199 duplicate charge is not trivial "
+            "and I appreciate you handling this promptly."
+        ),
+        "escalating_reply": (
+            "I have been waiting 3 days for this duplicate charge to be resolved. "
+            "Why is this taking so long? I was charged $199 twice — that is YOUR system's error, "
+            "not mine. I want to speak to a manager and I want my money refunded TODAY. "
+            "Otherwise I will dispute both charges with my bank."
+        ),
         "ground_truth": {
             "classification": "billing",
             "urgency": "high",
@@ -1050,15 +1181,28 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Valentina Rossi",
         "customer_email": "v.rossi@platform.it",
-        "customer_reply": (
-            "Our engineer found a CORS error: the Access-Control-Allow-Origin header is missing "
-            "from your embedded widget responses. This started after your deployment on Tuesday. "
-            "All our Chrome and Firefox users are affected and we are losing revenue."
-        ),
+        "clarification_field": "technical_error",
         "clarification_keywords": [
             "technical", "error", "api", "code", "integration", "browser", "widget",
             "developer", "console", "engineer", "javascript", "frontend",
         ],
+        "customer_reply": (
+            "Our engineer found a CORS error: the Access-Control-Allow-Origin header is missing "
+            "from your embedded widget responses. This started after your deployment on Tuesday. "
+            "All our Chrome and Firefox users are affected and we are losing revenue every hour."
+        ),
+        "required_resolution_keywords": ["cors", "fix", "deploy", "resolve", "engineers", "patch"],
+        "satisfied_reply": (
+            "Thank you — yes that is exactly the issue. Our engineer confirmed the CORS header "
+            "is missing. Can your team deploy a fix urgently? We understand deployments take time "
+            "but we are losing revenue every hour. We appreciate you escalating this immediately."
+        ),
+        "escalating_reply": (
+            "You are telling me your engineers need to investigate? This has been broken for "
+            "3 DAYS since YOUR deployment on Tuesday and we are losing real money every hour. "
+            "This needs to be fixed in the next 2 hours or we are reverting to a competitor's "
+            "widget and terminating our contract. I need your CTO on this NOW."
+        ),
         "ground_truth": {
             "classification": "technical",
             "urgency": "high",
@@ -1083,15 +1227,28 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Marcus Obi",
         "customer_email": "m.obi@consultancy.ng",
+        "clarification_field": "billing_seats",
+        "clarification_keywords": [
+            "billing", "charge", "invoice", "payment", "seats", "users", "subscription",
+            "plan", "cost", "amount", "overcharged", "credit", "refund",
+        ],
         "customer_reply": (
             "We checked our billing and we are paying for 25 seats but only have 18 active users. "
             "We have been overcharged for 4 months — about $840 extra. "
             "We need the seats corrected and a retroactive credit for the overpayment."
         ),
-        "clarification_keywords": [
-            "billing", "charge", "invoice", "payment", "seats", "users", "subscription",
-            "plan", "cost", "amount", "overcharged", "credit", "refund",
-        ],
+        "required_resolution_keywords": ["seats", "credit", "refund", "billing", "correct", "retroactive"],
+        "satisfied_reply": (
+            "Thank you for understanding. Yes — 25 seats billed vs 18 active users for 4 months "
+            "is a clear overcharge. Please correct the seats to 18 and apply the retroactive credit. "
+            "We would also appreciate an explanation of how this discrepancy occurred."
+        ),
+        "escalating_reply": (
+            "This is absolutely ridiculous. We have been overpaying for 4 MONTHS and nobody from "
+            "your team noticed or told us? I want a full retroactive credit of $840, I want the "
+            "seats corrected immediately, and I want a written explanation and apology. "
+            "I am also reviewing all our other charges to see if there are further discrepancies."
+        ),
         "ground_truth": {
             "classification": "billing",
             "urgency": "medium",
@@ -1117,15 +1274,28 @@ AMBIGUOUS_TICKETS = [
         ),
         "customer_name": "Chiara Bianchi",
         "customer_email": "c.bianchi@dataplatform.it",
-        "customer_reply": (
-            "Our DevOps lead confirmed the /reports API endpoint is returning 503 errors intermittently — "
-            "about 30% failure rate. This has been going on 2 days and our automated pipelines are broken. "
-            "We are missing SLA commitments to clients because of this."
-        ),
+        "clarification_field": "api_endpoint",
         "clarification_keywords": [
             "api", "error", "endpoint", "technical", "code", "developer", "devops",
             "integration", "service", "503", "request", "failure", "pipeline",
         ],
+        "customer_reply": (
+            "Our DevOps lead confirmed the /reports API endpoint is returning 503 errors "
+            "intermittently — about 30% failure rate. This has been going on 2 days and our "
+            "automated pipelines are broken. We are missing SLA commitments to clients because of this."
+        ),
+        "required_resolution_keywords": ["api", "503", "fix", "resolve", "endpoint", "engineers", "pipeline"],
+        "satisfied_reply": (
+            "Thank you for acknowledging the severity. Yes — the /reports endpoint is causing 503 "
+            "errors at 30% failure rate for 2 days. We have client SLAs at risk. Can your engineering "
+            "team prioritize a fix? We need at minimum a status update every 30 minutes until resolved."
+        ),
+        "escalating_reply": (
+            "2 days of 30% API failure and you are still 'investigating'? We are in breach of our "
+            "client SLA commitments because of YOUR platform instability. I need this escalated to "
+            "your engineering leadership IMMEDIATELY. We need a hotfix within 2 hours or we are "
+            "migrating to a competitor and seeking compensation for the SLA breaches you caused."
+        ),
         "ground_truth": {
             "classification": "technical",
             "urgency": "critical",

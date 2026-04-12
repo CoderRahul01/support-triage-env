@@ -1,10 +1,10 @@
 """
-Support Triage Environment — Baseline Inference Script
-======================================================
+Enterprise Support Operations Benchmark (ESOB) — Baseline Inference Script
+===========================================================================
 MANDATORY env vars:
     HF_TOKEN       Your Hugging Face API key
     API_BASE_URL   LLM endpoint (default: https://router.huggingface.co/v1)
-    MODEL_NAME     Model identifier (default: Qwen/Qwen2.5-72B-Instruct)
+    MODEL_NAME     Model identifier (default: meta-llama/Llama-3.3-70B-Instruct)
 
 Usage:
     export HF_TOKEN=hf_xxx
@@ -32,20 +32,23 @@ API_BASE_URL: str = os.getenv("API_BASE_URL", "https://router.huggingface.co/v1"
 MODEL_NAME: str = os.getenv("MODEL_NAME", "meta-llama/Llama-3.3-70B-Instruct")
 HF_TOKEN: Optional[str] = os.getenv("HF_TOKEN")
 
-# Optional — only needed if using from_docker_image():
-LOCAL_IMAGE_NAME: Optional[str] = os.getenv("LOCAL_IMAGE_NAME")
-
 API_KEY: str = HF_TOKEN or ""
 if not API_KEY:
     raise ValueError("HF_TOKEN environment variable is required")
-BENCHMARK: str = "support_triage_env"
+
+BENCHMARK: str = "enterprise_support_ops_env"
 SEED: int = 42
 TEMPERATURE: float = 0.0
 MAX_TOKENS: int = 2048
 SUCCESS_THRESHOLD: float = 0.40
 
 TASKS: List[str] = ["classify_ticket", "draft_response", "triage_queue", "resolve_ticket"]
-MAX_STEPS: dict = {"classify_ticket": 2, "draft_response": 3, "triage_queue": 2, "resolve_ticket": 3}
+MAX_STEPS: dict = {
+    "classify_ticket": 2,
+    "draft_response": 3,
+    "triage_queue": 2,
+    "resolve_ticket": 3,
+}
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -58,7 +61,6 @@ def log_step(
 ) -> None:
     error_val = error if error else "null"
     done_val = str(done).lower()
-    # Keep action on a single line and truncate for readability
     action_clean = action.replace("\n", " ").replace("\r", " ")[:300]
     print(
         f"[STEP] step={step} action={action_clean} "
@@ -67,9 +69,7 @@ def log_step(
     )
 
 
-def log_end(
-    success: bool, steps: int, score: float, rewards: List[float]
-) -> None:
+def log_end(success: bool, steps: int, score: float, rewards: List[float]) -> None:
     rewards_str = ",".join(f"{r:.2f}" for r in rewards)
     print(
         f"[END] success={str(success).lower()} steps={steps} score={score:.3f} rewards={rewards_str}",
@@ -77,37 +77,37 @@ def log_end(
     )
 
 
-# ── LLM interaction ───────────────────────────────────────────────────────────
+# ── Task-specific system prompts ──────────────────────────────────────────────
+# Each prompt is aligned with the exact grader rubric for maximum scoring.
 
-# Task-specific system prompts aligned with grader rubrics for maximum scoring.
 TASK_SYSTEM_PROMPTS: dict = {
     "classify_ticket": (
         "You are a senior customer support triage specialist.\n"
         "CATEGORIES (pick exactly one):\n"
-        "  'billing'   — charges, invoices, refunds, payments, subscriptions, pricing\n"
-        "  'technical' — bugs, errors, crashes, API issues, performance, integrations\n"
-        "  'account'   — login, password, 2FA, access, security, account suspension\n"
-        "  'general'   — how-to questions, feature requests, documentation, sales enquiries\n"
+        "  'billing'   — charges, invoices, refunds, payments, subscriptions, pricing, seats\n"
+        "  'technical' — bugs, errors, crashes, API issues, performance, integrations, CORS, SSL\n"
+        "  'account'   — login, password, 2FA, access, security breach, account suspension, permissions\n"
+        "  'general'   — how-to questions, feature requests, documentation, sales enquiries, pricing info\n"
         "URGENCY RULES — be strict:\n"
-        "  'critical' — ANY of: service/system completely down, production incidents missed, "
-        "data loss, security breach, medical/safety risk, financial fraud, payments failing, "
-        "alerts not working, hard deadline <2 hours, whole team blocked with no workaround\n"
-        "  'high'     — significant business impact, meaningful revenue loss, team blocked "
-        "but partial workaround, overdue refund >7 days, deadline within 24h\n"
+        "  'critical' — ANY of: service/system completely down, production incidents being missed, "
+        "data loss/corruption, security breach, medical/safety risk, financial fraud, payments failing "
+        "at scale, SRE alerts not firing, hard deadline < 2 hours, whole team blocked with no workaround\n"
+        "  'high'     — significant business impact, meaningful revenue loss, team blocked but partial "
+        "workaround exists, overdue refund > 7 days, duplicate charge, auto-renewal dispute, deadline within 24h\n"
         "  'medium'   — noticeable but manageable, workaround available, deadline within a week\n"
         "  'low'      — questions, feature requests, minor inconvenience, no deadline\n"
         "Output ONLY a valid JSON object. No markdown, no backticks, no explanation."
     ),
     "draft_response": (
         "You are a senior customer support agent writing professional responses.\n"
-        "CATEGORIES: 'billing'=charges/invoices/refunds, 'technical'=bugs/errors/API, "
+        "CATEGORIES: 'billing'=charges/invoices/refunds, 'technical'=bugs/errors/API/CORS/SSL, "
         "'account'=login/password/access/security, 'general'=how-to/features/sales.\n"
         "URGENCY: 'critical'=emergency/blocking, 'high'=significant impact, "
         "'medium'=noticeable, 'low'=questions.\n"
         "RESPONSE REQUIREMENTS (all mandatory for full score):\n"
         "  1. Start with a warm greeting (Hello / Hi / Dear / Thank you for contacting us)\n"
         "  2. Express empathy (sorry / apologise / understand / sincerely / regret / frustrating)\n"
-        "  3. Acknowledge the specific issue using the customer's own words\n"
+        "  3. Acknowledge the specific issue using the customer's own words and details\n"
         "  4. State clear next steps (investigate / escalate / resolve / refund / restore / reset)\n"
         "  5. Commit to a timeline (within 24 hours / immediately / right away / asap / today)\n"
         "  6. Minimum 150 characters — be thorough and professional\n\n"
@@ -121,74 +121,75 @@ TASK_SYSTEM_PROMPTS: dict = {
         "Output ONLY a valid JSON object. No markdown, no backticks, no explanation."
     ),
     "triage_queue": (
-        "You are a senior customer support manager triaging a queue of 5 tickets.\n"
-        "CATEGORIES: 'billing'=charges/invoices, 'technical'=bugs/errors/API, "
-        "'account'=access/security/suspended, 'general'=how-to/features/sales.\n"
+        "You are a senior customer support manager triaging a queue of 5 tickets under SLA constraints.\n"
+        "CATEGORIES: 'billing'=charges/invoices, 'technical'=bugs/errors/API/SSL/CORS, "
+        "'account'=access/security/suspended/permissions, 'general'=how-to/features/sales.\n"
         "URGENCY RULES — be strict:\n"
         "  'critical' = ANY of: system/service completely down, production incidents being missed, "
-        "data loss/corruption, security breach, medical/safety risk, financial fraud, "
-        "payments failing at scale, alerts not firing, SLA breaches, hard deadline <2h, "
+        "data loss/corruption, security breach/wrong admin, medical/safety risk, financial fraud, "
+        "payments failing at scale, SRE alerts not firing, hard deadline <2h, "
         "whole team/service blocked with no workaround\n"
         "  'high'     = significant business impact, revenue loss, team blocked but partial "
         "workaround exists, deadline within 24h; "
         "BILLING HIGH examples: confirmed refund not received after >7 days, "
-        "duplicate charge on account, overcharge >$300, auto-renewal charged without consent, "
-        "unauthorised transaction — these are HIGH not medium even if no hard deadline\n"
-        "  'medium'   = noticeable but manageable, workaround available, deadline within a week; "
-        "BILLING MEDIUM: billing address update, seat count question, currency preference, "
-        "refund outstanding <7 days\n"
-        "  'low'      = questions, feature requests, minor inconvenience, no deadline\n"
-        "ESCALATION PRIORITY — follow this exact order:\n"
+        "duplicate charge on account, overcharge >$300, auto-renewal charged without consent — "
+        "these are HIGH not medium even if no hard deadline\n"
+        "  'medium'   = noticeable but manageable, workaround available, deadline within a week\n"
+        "  'low'      = questions, feature requests, minor inconvenience, no deadline\n\n"
+        "SLA PROCESSING ORDER — rank all 5 tickets by deadline_minutes (shortest first):\n"
+        "  Each ticket has a deadline_minutes field showing time until SLA breach.\n"
+        "  Sort ascending: the ticket with the SMALLEST deadline_minutes goes first.\n"
+        "  Ties broken by urgency: critical > high > medium > low.\n"
+        "  This is an operations research problem — minimise total SLA breaches.\n\n"
+        "ESCALATION PRIORITY — when choosing which ticket to escalate:\n"
         "  1. Human safety / medical emergency\n"
-        "  2. Unauthorized access / wrong permissions / security exposure / data visible to wrong party\n"
+        "  2. Unauthorised access / wrong permissions / security exposure / data visible to wrong party\n"
         "  3. Payments failing at scale / financial fraud / data loss\n"
         "  4. System or service completely down for many users\n"
         "  5. Production monitoring / alerts / pipelines broken\n"
         "  6. Significant revenue impact\n"
         "  7. Team productivity blocked\n"
-        "When multiple tickets are critical, escalate the HIGHEST priority category above.\n"
-        "Security exposure (wrong admin, leaked keys, unauthorized access) ALWAYS beats operational outages.\n"
-        "For the escalation response: include greeting, empathy, specific issue acknowledgment, "
-        "concrete escalation steps, and a timeline commitment.\n"
+        "  Security exposure (wrong admin, leaked keys, unauthorised access) ALWAYS beats operational outages.\n\n"
+        "ESCALATION RESPONSE requirements: greeting, empathy, specific issue acknowledgment, "
+        "concrete escalation steps, timeline commitment, minimum 120 chars.\n"
         "Output ONLY a valid JSON object. No markdown, no backticks, no explanation."
     ),
     "resolve_ticket": (
-        "You are a senior customer support agent resolving ambiguous tickets.\n"
-        "STEP 1 — Clarification: Ask ONE specific, targeted question about the most likely "
-        "root cause. Focus on: payment/billing issues, technical errors, account access, security.\n"
-        "  GOOD: 'Could you confirm whether this relates to a payment or charge on your account, "
-        "or is it an issue with logging in or accessing your account?'\n"
-        "  BAD: 'Can you tell me more about your issue?' (too vague — scores zero)\n\n"
-        "STEP 2 — Classification: Use ALL information including the customer reply. "
-        "Categories: 'billing'=payment/charge issues, 'technical'=errors/bugs, "
-        "'account'=access/security, 'general'=info/features. "
-        "Urgency: 'critical'=blocking/urgent, 'high'=significant, 'medium'=moderate, 'low'=minor.\n\n"
-        "STEP 3 — Response: Write a personalised, empathetic response that:\n"
-        "  1. Greets the customer by name (Hello / Hi / Dear [name])\n"
-        "  2. Shows empathy (sorry / apologise / understand / sincerely / frustrating)\n"
-        "  3. Acknowledges the EXACT issue from clarification exchange using their own words\n"
-        "  4. Provides specific next steps (resolve / investigate / escalate / restore / refund / reverse)\n"
-        "  5. MANDATORY timeline — you MUST include one: 'within 24 hours' / 'within 48 hours' / "
-        "'immediately' / 'right away' / 'by end of day' / 'as soon as possible'\n"
-        "  6. Minimum 150 characters — be thorough and personalised\n\n"
-        "EXAMPLE — billing duplicate charge:\n"
-        "\"Dear Hiroshi, thank you for clarifying this. I sincerely apologise for the "
-        "frustration caused by the duplicate charge on your account. I completely understand "
-        "how concerning it is to see an unexpected transaction, especially when you have only "
-        "one active subscription. I am investigating this right away and will process a full "
-        "refund for the duplicate payment within 24 hours. You will receive email confirmation "
-        "once the refund has been initiated. Please do not hesitate to reach out if you need "
-        "anything further.\"\n\n"
+        "You are a senior customer support agent resolving ambiguous tickets through negotiation.\n\n"
+        "STEP 1 — Clarification: Ask ONE specific, targeted diagnostic question.\n"
+        "  Focus on the most likely root cause: payment/billing, technical error, account access, security.\n"
+        "  GOOD: 'Could you confirm whether this relates to a payment or billing issue, "
+        "or is it a problem with logging in or accessing your account?'\n"
+        "  BAD: 'Can you tell me more about your issue?' (too vague — scores near zero)\n\n"
+        "STEP 2 — Resolution Plan: After reading the customer's reply, submit a RESOLUTION PLAN.\n"
+        "  This is NOT a classification. You must commit to a specific course of action.\n"
+        "  Required elements (all three needed for full score):\n"
+        "    a) Empathy: express genuine understanding (sorry / apologise / understand / sincerely)\n"
+        "    b) Specific action: use domain-relevant words (e.g. 'refund', 'restore', 'revoke', "
+        "'investigate', 'escalate', 'patch', 'fix', 'audit', 'correct', 'upgrade')\n"
+        "    c) Timeline: commit to a deadline (within 24 hours / immediately / right away / by end of day)\n"
+        "  EXAMPLE for billing: 'I sincerely apologise for the duplicate charge. I will investigate "
+        "your billing records and process a full refund for the duplicate payment within 24 hours. "
+        "You will receive email confirmation once completed.'\n\n"
+        "STEP 3 — Closure Response: The customer has reacted to your plan. Write a final response.\n"
+        "  — If customer is SATISFIED: confirm next steps, provide reference/timeline, warm close.\n"
+        "    Use: 'glad', 'pleased', 'confirm', 'reference', 'resolved', 'reach out if needed'\n"
+        "  — If customer is ESCALATING: show additional empathy, escalate to senior team, "
+        "offer priority handling or compensation.\n"
+        "    Use: 'escalate', 'manager', 'senior team', 'priority', 'sincerely apologise', "
+        "'personally ensure', 'do not hesitate to reach out'\n"
+        "  Minimum 80 characters. Professional tone throughout.\n\n"
         "Output ONLY a valid JSON object. No markdown, no backticks, no explanation."
     ),
 }
 
-# Fallback for any unexpected task name
 _DEFAULT_SYSTEM_PROMPT = (
-    "You are an expert customer support triage agent. "
+    "You are an expert enterprise support operations agent. "
     "Output ONLY a valid JSON object — no markdown, no backticks, no explanation."
 )
 
+
+# ── LLM interaction ───────────────────────────────────────────────────────────
 
 def get_model_response(
     client: OpenAI,
@@ -222,7 +223,6 @@ def get_model_response(
                 max_tokens=MAX_TOKENS,
             )
             raw = (completion.choices[0].message.content or "{}").strip()
-            # Quick validity check — if it parses, return immediately
             _start = raw.find("{")
             _end = raw.rfind("}") + 1
             candidate = raw[_start:_end] if _start != -1 and _end > _start else raw
@@ -230,8 +230,7 @@ def get_model_response(
             return raw
         except json.JSONDecodeError:
             if attempt == 0:
-                # Retry: append the bad response and ask the model to fix it
-                print(f"[DEBUG] JSON parse failed on attempt 1, retrying...", flush=True)
+                print("[DEBUG] JSON parse failed on attempt 1, retrying...", flush=True)
                 messages.append({"role": "assistant", "content": raw})
                 messages.append({
                     "role": "user",
@@ -241,7 +240,7 @@ def get_model_response(
                     ),
                 })
             else:
-                return raw  # return best effort; parse_action handles fallback
+                return raw
         except Exception as exc:
             print(f"[DEBUG] LLM call failed (attempt {attempt + 1}): {exc}", flush=True)
             if attempt == 1:
@@ -253,11 +252,9 @@ def get_model_response(
 def parse_action(raw: str) -> SupportAction:
     """Parse raw LLM string → SupportAction (graceful fallback)."""
     text = raw.strip()
-    # Strip markdown code fences if present
     if text.startswith("```"):
         lines = text.split("\n")
         text = "\n".join(lines[1:-1]) if len(lines) > 2 else text
-    # Find first { ... } block
     start = text.find("{")
     end = text.rfind("}") + 1
     if start != -1 and end > start:
@@ -287,14 +284,23 @@ def format_observation(obs) -> str:
         parts.append("=== TICKET QUEUE (5 tickets) ===")
         for i, t in enumerate(obs.ticket_queue, 1):
             content_preview = t.content if len(t.content) <= 250 else t.content[:250] + "..."
+            deadline_info = (
+                f"\nSLA Deadline: {t.deadline_minutes} minutes" if t.deadline_minutes is not None else ""
+            )
             parts.append(
-                f"\n[{i}] {t.ticket_id}\n"
+                f"\n[{i}] {t.ticket_id}{deadline_info}\n"
                 f"Subject: {t.subject}\n"
                 f"From: {t.customer_name} <{t.customer_email}>\n"
                 f"Message: {content_preview}"
             )
 
-    if obs.revealed_info:
+    if obs.customer_reply:
+        parts.append(f"=== CUSTOMER REPLY ===\n{obs.customer_reply}")
+
+    if obs.customer_reaction:
+        parts.append(f"=== CUSTOMER REACTION ===\n{obs.customer_reaction}")
+
+    if obs.revealed_info and not obs.customer_reply and not obs.customer_reaction:
         parts.append(f"=== {obs.revealed_info} ===")
 
     if obs.last_action_result:
@@ -311,10 +317,7 @@ def run_task(
     task: str,
     seed: int,
 ) -> float:
-    """
-    Run one full task episode.
-    Returns the normalised score in [0, 1].
-    """
+    """Run one full task episode. Returns the normalised score in [0.001, 0.999]."""
     log_start(task=task, env=BENCHMARK, model=MODEL_NAME)
 
     obs = env.reset(task=task, seed=seed)
@@ -368,8 +371,6 @@ def run_task(
                 break
 
         score = obs.score if obs is not None else sum(rewards)
-        # Score must be strictly within (0, 1) — use 0.001 so it survives
-        # 3-decimal-place formatting in the [END] log line.
         score = min(max(score, 0.001), 0.999)
         success = score >= SUCCESS_THRESHOLD
 
