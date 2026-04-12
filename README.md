@@ -14,9 +14,9 @@ tags:
 
 > **OpenEnv-compliant** reinforcement learning environment for training and evaluating AI agents on enterprise support operations — a domain requiring real business judgment, SLA-aware prioritisation, and multi-turn negotiation under emotional escalation.
 
-[![Phase 1](https://img.shields.io/badge/Phase%201-Passed-brightgreen)](https://github.com/CoderRahul01/support-triage-env)
-[![Phase 2](https://img.shields.io/badge/Phase%202-Passed-brightgreen)](https://github.com/CoderRahul01/support-triage-env)
-[![HF Space](https://img.shields.io/badge/HuggingFace-Space-yellow)](https://huggingface.co/spaces/PengoSword123/support-triage-env)
+[![Phase 1](https://img.shields.io/badge/Phase%201-Passed-brightgreen)](https://github.com/CoderRahul01/Enterprise-Support-Operations-Benchmark)
+[![Phase 2](https://img.shields.io/badge/Phase%202-Passed-brightgreen)](https://github.com/CoderRahul01/Enterprise-Support-Operations-Benchmark)
+[![HF Space](https://img.shields.io/badge/HuggingFace-Space-yellow)](https://huggingface.co/spaces/PengoSword123/enterprise-support-operations-benchmark)
 
 ---
 
@@ -294,15 +294,15 @@ The baseline agent uses **task-specific system prompts** aligned precisely with 
 
 ```bash
 # Health check
-curl https://pengosword123-support-triage-env.hf.space/health
+curl https://pengosword123-enterprise-support-operations-benchmark.hf.space/health
 
 # Reset — start a triage_queue episode
-curl -X POST https://pengosword123-support-triage-env.hf.space/reset \
+curl -X POST https://pengosword123-enterprise-support-operations-benchmark.hf.space/reset \
   -H "Content-Type: application/json" \
   -d '{"task": "triage_queue", "seed": 42}'
 
 # Step — submit classifications + SLA processing order
-curl -X POST https://pengosword123-support-triage-env.hf.space/step \
+curl -X POST https://pengosword123-enterprise-support-operations-benchmark.hf.space/step \
   -H "Content-Type: application/json" \
   -d '{
     "action": {
@@ -323,8 +323,8 @@ curl -X POST https://pengosword123-support-triage-env.hf.space/step \
 ## Local Setup
 
 ```bash
-git clone https://github.com/CoderRahul01/support-triage-env
-cd support-triage-env
+git clone https://github.com/CoderRahul01/Enterprise-Support-Operations-Benchmark
+cd Enterprise-Support-Operations-Benchmark
 
 pip install -r requirements.txt
 
